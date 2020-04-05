@@ -1,3 +1,4 @@
+import org.gradle.plugins.ide.idea.model.IdeaLanguageLevel
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 buildscript {
@@ -7,10 +8,18 @@ buildscript {
 }
 
 plugins {
+    idea
     kotlin("jvm") version "1.3.71"
     kotlin("plugin.spring") version "1.3.71" apply false
     id("org.springframework.boot") version "2.2.0.RELEASE" apply false
     id("io.spring.dependency-management") version "1.0.8.RELEASE" apply false
+}
+
+idea {
+    module {
+        isDownloadJavadoc = true
+        isDownloadSources = true
+    }
 }
 
 allprojects {

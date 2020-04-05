@@ -14,10 +14,12 @@ apply {
 
 dependencies {
     implementation(project(":bot"))
-    implementation(project(":dsl"))
 
     implementation(kotlin("reflect"))
     implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+
+    implementation("com.slack.api:bolt-servlet:1.0.3")
 }

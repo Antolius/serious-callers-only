@@ -1,0 +1,4 @@
+logging.level:
+  com.slack.api: TRACE
+server:
+  port: 3000

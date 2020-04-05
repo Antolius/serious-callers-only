@@ -2,31 +2,29 @@
 
 package org.github.jantolis.seriouscallersonly.app
 
-import org.github.jantolis.seriouscallersonly.bot.Bot
+import com.slack.api.bolt.App
+import com.slack.api.bolt.servlet.SlackAppServlet
+import org.github.jantolis.seriouscallersonly.bot.bot
 import org.github.jantolis.seriouscallersonly.dsl.Protocol
 import org.github.jantolis.seriouscallersonly.dsl.protocol
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
-import org.springframework.web.servlet.function.ServerResponse
-import org.springframework.web.servlet.function.router
+import org.springframework.boot.web.servlet.ServletComponentScan
+import javax.servlet.annotation.WebServlet
 
 @SpringBootApplication
-class App
+@ServletComponentScan
+class BootApp
+
+@WebServlet("/slack/events")
+class SlackController(app: App) : SlackAppServlet(app)
 
 fun main(args: Array<String>) {
-    runApplication<App>(*args) {
+    runApplication<BootApp>(*args) {
         addInitializers(beans())
     }
 }
 
 fun beans() = org.springframework.context.support.beans {
-    bean { protocol { greeting = "Hello world!" } }
-    bean<Bot, Protocol>({ Bot(listOf(it)) })
-    bean({ bot: Bot -> Router(bot).routes() })
-}
-
-class Router(private val bot: Bot) {
-    fun routes() = router {
-        GET("/greeting") { ServerResponse.ok().body(bot.greet())}
-    }
+    bean { bot(mapOf("C0114PUSDU2" to gameProtocol())) }
 }

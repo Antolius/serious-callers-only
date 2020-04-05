@@ -12,13 +12,13 @@ import org.springframework.http.HttpStatus
 class MainTest(@Autowired val rest: TestRestTemplate) {
 
     @Test
-    fun `Should expose greeting endpoint`() {
+    fun `Should report as UP on actuator health endpoint`() {
         // given, when
-        val actualRes = rest.getForEntity("/greeting", String::class.java)
+        val actualRes = rest.getForEntity("/actuator/health", String::class.java)
 
         // then
         then(actualRes.statusCode).isEqualTo(HttpStatus.OK)
-        then(actualRes.body).isEqualTo("Hello world!")
+        then(actualRes.body).isEqualTo("""{"status":"UP"}""")
     }
 
 }
