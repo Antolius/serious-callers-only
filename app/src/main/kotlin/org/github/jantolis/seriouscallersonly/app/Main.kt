@@ -4,12 +4,13 @@ package org.github.jantolis.seriouscallersonly.app
 
 import com.slack.api.bolt.App
 import com.slack.api.bolt.servlet.SlackAppServlet
-import org.github.jantolis.seriouscallersonly.bot.bot
-import org.github.jantolis.seriouscallersonly.dsl.Protocol
-import org.github.jantolis.seriouscallersonly.dsl.protocol
+import org.github.jantolis.seriouscallersonly.bot.slackApp
+import org.github.jantolis.seriouscallersonly.dsl.Bot
+import org.github.jantolis.seriouscallersonly.dsl.Channel
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.boot.web.servlet.ServletComponentScan
+import org.springframework.context.support.beans
 import javax.servlet.annotation.WebServlet
 
 @SpringBootApplication
@@ -25,6 +26,10 @@ fun main(args: Array<String>) {
     }
 }
 
-fun beans() = org.springframework.context.support.beans {
-    bean { bot(mapOf("C0114PUSDU2" to gameProtocol())) }
+fun beans() = beans {
+    bean {
+        slackApp(bot = Bot(channelProtocols = mapOf(
+                Channel("C0114PUSDU2") to gameProtocol()
+        )))
+    }
 }
