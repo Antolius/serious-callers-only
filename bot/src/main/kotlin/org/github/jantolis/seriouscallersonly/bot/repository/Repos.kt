@@ -4,19 +4,19 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 interface Repo<KeyType, ElementType> {
-    suspend fun store(key: KeyType, element: ElementType)
+    suspend fun store(element: ElementType)
     suspend fun find(key: KeyType): ElementType?
     suspend fun remove(key: KeyType)
     suspend fun clear()
 }
 
 class ConcurrentRepo<KeyType, ElementType>(
-        private val backingRepo: Repo<KeyType, ElementType> = MapRepo()
+        private val backingRepo: Repo<KeyType, ElementType>
 ) : Repo<KeyType, ElementType> {
     private val mtx = Mutex()
 
-    override suspend fun store(key: KeyType, element: ElementType) = mtx.withLock {
-        backingRepo.store(key, element)
+    override suspend fun store(element: ElementType) = mtx.withLock {
+        backingRepo.store(element)
     }
 
     override suspend fun find(key: KeyType) = mtx.withLock {
@@ -33,11 +33,13 @@ class ConcurrentRepo<KeyType, ElementType>(
 
 }
 
-class MapRepo<KeyType, ElementType> : Repo<KeyType, ElementType> {
+class MapRepo<KeyType, ElementType>(
+        val keyExtractor: (ElementType) -> KeyType
+) : Repo<KeyType, ElementType> {
     private val store = mutableMapOf<KeyType, ElementType>()
 
-    override suspend fun store(key: KeyType, element: ElementType) {
-        store[key] = element
+    override suspend fun store(element: ElementType) {
+        store[keyExtractor(element)] = element
     }
 
     override suspend fun find(key: KeyType) = store[key]

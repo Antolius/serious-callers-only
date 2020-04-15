@@ -1,43 +1,15 @@
 package org.github.jantolis.seriouscallersonly.app.games
 
-import org.github.jantolis.seriouscallersonly.dsl.*
+import org.github.jantolis.seriouscallersonly.dsl.CommandProtocol
+import org.github.jantolis.seriouscallersonly.dsl.Replier
 
 fun playCommandProtocol() = CommandProtocol(Replier {
     val txt = (it.text ?: "").toLowerCase().replace("\\s".toRegex(), "")
     if (txt.contains("tictactoe")) {
         return@Replier TicTacToeGame().renderBoard()
     }
-    if (txt.contains("guessing")) {
+    if (txt.contains("guess")) {
         return@Replier GuessingGame((1..10)).render()
     }
-    val gamePrompt = Block.Section(text = Element.Text.Plain("Which game would you like to play?"))
-    return@Replier Reply.Message(blocks = listOf(
-            gamePrompt,
-            Block.Actions(elements = listOf(
-                    Element.Button(
-                            text = Element.Text.Plain("Tic Tac Toe"),
-                            onClick = Replier { interaction ->
-                                Reply.ReplacementMessage(
-                                        blocks = listOf(
-                                                gamePrompt,
-                                                Block.Section(text = Element.Text.Markdown("${interaction.actor.mention} picked Tic Tac Toe!"))
-                                        ),
-                                        andThen = VoidReplier { TicTacToeGame().renderBoard() }
-                                )
-                            }
-                    ),
-                    Element.Button(
-                            text = Element.Text.Plain("Guessing game"),
-                            onClick = Replier { interaction ->
-                                Reply.ReplacementMessage(
-                                        blocks = listOf(
-                                                gamePrompt,
-                                                Block.Section(text = Element.Text.Markdown("${interaction.actor.mention} picked Guessing game!"))
-                                        ),
-                                        andThen = VoidReplier { GuessingGame((1..10)).render() }
-                                )
-                            }
-                    )
-            ))
-    ))
+    return@Replier gameMenu()
 })

@@ -1,6 +1,7 @@
 package org.github.jantolis.seriouscallersonly.bot
 
 import org.github.jantolis.seriouscallersonly.bot.repository.ConcurrentRepo
+import org.github.jantolis.seriouscallersonly.bot.repository.MapRepo
 import org.github.jantolis.seriouscallersonly.bot.repository.Repo
 import org.github.jantolis.seriouscallersonly.dsl.*
 
@@ -29,12 +30,12 @@ class Conversation(
         var triggerId: String? = null,
         var updateableMessageTs: String? = null,
         var messageTsToDelete: String? = null,
-        val interactionsRepo: Repo<InteractionKey, LiveInteraction> = ConcurrentRepo()
+        val interactionsRepo: Repo<InteractionKey, LiveInteraction> = ConcurrentRepo(MapRepo { it.key })
 ) : Repo<InteractionKey, LiveInteraction> by interactionsRepo {
-    var key: ConversationKey? = null
+    lateinit var key: ConversationKey
 
-    override suspend fun store(key: InteractionKey, element: LiveInteraction) {
+    override suspend fun store(element: LiveInteraction) {
         element.conversation = this
-        interactionsRepo.store(key, element)
+        interactionsRepo.store(element)
     }
 }

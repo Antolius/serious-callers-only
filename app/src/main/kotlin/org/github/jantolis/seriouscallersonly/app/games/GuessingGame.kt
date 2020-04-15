@@ -22,12 +22,22 @@ internal class GuessingGame(range: IntRange) {
                 text = Element.Text.Plain("$guess"),
                 onSelect = Replier {
                     if (guess == answer) {
-                        Reply.Message(blocks = listOf(Block.Section(text = Element.Text.Plain("Correct!!!"))))
+                        Reply.Message(blocks = listOf(Block.Section(
+                                text = Element.Text.Plain("Correct!!! :tada: :confetti_ball: :tada:"),
+                                accessory = Element.Button(
+                                        text = Element.Text.Plain("Play another game!"),
+                                        onClick = Replier { gameMenu() }
+                                )
+                        )))
                     } else {
                         options.remove(guess)
                         Reply.Message(blocks = listOf(
                                 Block.Section(
-                                        text = Element.Text.Plain("Wrong! Guess again!"),
+                                        text = Element.Text.Plain("Wrong! Guess ${if (guess > answer) {
+                                            "lower"
+                                        } else {
+                                            "higher"
+                                        }}!"),
                                         accessory = Element.Select(
                                                 placeholder = Element.Text.Plain("Pick another number!"),
                                                 options = options.map { toOption(it) }

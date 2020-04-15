@@ -1,20 +1,25 @@
 package org.github.jantolis.seriouscallersonly.dsl
 
+interface ChainableReply {
+    val andThen: VoidReplier?
+    val onReply: Replier<PostedMessage>?
+}
+
 sealed class Reply {
     class Message(
             val blocks: List<MessageBlock>,
             val visibleTo: Visibility = Visibility.Public,
-            val andThen: VoidReplier? = null,
-            val onReply: Replier<PostedMessage>? = null
-    ) : Reply() {
+            override val andThen: VoidReplier? = null,
+            override val onReply: Replier<PostedMessage>? = null
+    ) : Reply(), ChainableReply {
         fun asReplacement() = ReplacementMessage(blocks, andThen, onReply)
     }
 
     class ReplacementMessage(
             val blocks: List<MessageBlock>,
-            val andThen: VoidReplier? = null,
-            val onReply: Replier<PostedMessage>? = null
-    ) : Reply() {
+            override val andThen: VoidReplier? = null,
+            override val onReply: Replier<PostedMessage>? = null
+    ) : Reply(), ChainableReply{
         fun asNewMessage() = Message(blocks, andThen = andThen, onReply = onReply)
     }
 

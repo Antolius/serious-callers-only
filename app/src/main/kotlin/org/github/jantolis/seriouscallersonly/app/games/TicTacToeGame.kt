@@ -2,17 +2,20 @@ package org.github.jantolis.seriouscallersonly.app.games
 
 import org.github.jantolis.seriouscallersonly.dsl.*
 
-private const val ERR_MSG = "This cell is already selected. Pick another one!"
-
 internal class TicTacToeGame {
+
     enum class Cell(
             val text: String,
             val style: ButtonStyle,
             val validator: ((Interaction) -> Errors)?
     ) {
         EMPTY("_", ButtonStyle.DEFAULT, null),
-        O("O", ButtonStyle.PRIMARY, { listOf(ERR_MSG) }),
-        X("X", ButtonStyle.DANGER, { listOf(ERR_MSG) });
+        O("O", ButtonStyle.PRIMARY, { listOf(ERR.MSG) }),
+        X("X", ButtonStyle.DANGER, { listOf(ERR.MSG) });
+
+        object ERR {
+            const val MSG = "This cell is already selected. Pick another one!"
+        }
     }
 
     private val board = (0..2).flatMap { x -> (0..2).map { y -> x to y } }
@@ -67,8 +70,8 @@ internal class TicTacToeGame {
                             """.trimIndent()
                     ),
                     accessory = Element.Button(
-                            text = Element.Text.Plain("Play another!"),
-                            onClick = Replier { TicTacToeGame().renderBoard() }
+                            text = Element.Text.Plain("Play another game!"),
+                            onClick = Replier { gameMenu() }
                     )
             )
     ))

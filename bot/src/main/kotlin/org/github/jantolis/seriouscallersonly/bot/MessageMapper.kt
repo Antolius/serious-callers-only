@@ -128,9 +128,8 @@ private suspend fun Element.Image.toSlackElement(ctx: Conversation) =
 
 private suspend fun Element.Button.toSlackElement(ctx: Conversation): ButtonElement {
     val elementId = UUID.randomUUID().toString()
-    val key = InteractionKey(elementId = elementId, value = text.text)
-    ctx.store(key, LiveInteraction(
-            key = key,
+    ctx.store(LiveInteraction(
+            key = InteractionKey(elementId = elementId, value = text.text),
             replier = onClick,
             validator = validate
     ))
@@ -163,9 +162,8 @@ private suspend fun Option.toSlackOption(
         elementId: String
 ): OptionObject {
     val value = UUID.randomUUID().toString()
-    val key = InteractionKey(elementId = elementId, value = value)
-    ctx.store(key, LiveInteraction(
-            key = key,
+    ctx.store(LiveInteraction(
+            key = InteractionKey(elementId = elementId, value = value),
             replier = onSelect
     ))
     return OptionObject.builder()
