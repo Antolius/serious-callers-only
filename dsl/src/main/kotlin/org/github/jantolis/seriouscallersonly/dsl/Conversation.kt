@@ -2,16 +2,18 @@ package org.github.jantolis.seriouscallersonly.dsl
 
 import java.time.Instant
 
-data class Conversation(
-        val channel: Channel,
-        val user: User,
-        var thread: Thread? = null,
-        val messages: MutableList<PostedMessage> = mutableListOf()
-)
-
 data class User(
         val id: String
-)
+) {
+    val mention: String
+        get() = "<@$id>"
+
+    object specialMention {
+        val here = "<!here|here>"
+        val channel = "<!channel>"
+        val everyone = "<!everyone>"
+    }
+}
 
 data class Channel(
         val id: String
@@ -30,10 +32,17 @@ data class PostedMessage(
 
 data class Command(val command: String)
 
-data class InvokedCommand(
-        val text: String,
+data class CommandInvocation(
+        val text: String?,
         val command: Command,
-        val author: User,
+        val invoker: User,
+        val channel: Channel,
+        val timestamp: Instant
+)
+
+data class Interaction(
+        val value: String,
+        val actor: User,
         val channel: Channel,
         val timestamp: Instant
 )

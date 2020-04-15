@@ -2,44 +2,44 @@ package org.github.jantolis.seriouscallersonly.bot
 
 import org.github.jantolis.seriouscallersonly.dsl.*
 
-
-data class InteractionKey<T>(
-        val blockId: String,
+data class InteractionKey(
         val elementId: String,
         val value: String
 )
 
-class LiveInteraction<T>(
-        val key: InteractionKey<T>,
-        val validator: Validator<String> = Validator { listOf() },
-        val replier: VoidReplier,
-        val replacer: Replacer<T>?
+class LiveInteraction(
+        val key: InteractionKey,
+        val validator: Validator? = null,
+        val replier: Replier<Interaction>
 ) {
-    lateinit var ctx: ConversationContext
+    lateinit var ctx: Conversation
 }
 
-class ConversationContext(
-        val conversation: Conversation,
-        val interactions: MutableMap<String, MutableMap<String, MutableMap<String, LiveInteraction<*>>>>,
+data class ConversationKey(
+        val channel: Channel,
+        val messageTs: String
+)
+
+class Conversation(
+        val user: User,
+        val channel: Channel,
+        val thread: Thread? = null,
         var triggerId: String? = null,
-        var lastMessageId: String? = null
+        var updateableMessageTs: String? = null,
+        var messageTsToDelete: String? = null
 ) {
-    fun <T> register(interaction: LiveInteraction<T>) {
+    var key: ConversationKey? = null
+
+    private val interactions = mutableMapOf<InteractionKey, LiveInteraction>()
+
+    fun register(interaction: LiveInteraction) {
         interaction.ctx = this
-        val key = interaction.key
-        interactions.computeIfAbsent(key.blockId) { mutableMapOf() }
-                .computeIfAbsent(key.elementId) { mutableMapOf() }
-                .put(key.value, interaction)
+        interactions[interaction.key] = interaction
     }
 
-    @Suppress("UNCHECKED_CAST")
-    fun <T> find(key: InteractionKey<T>): LiveInteraction<T>? {
-        return interactions[key.blockId]
-                ?.get(key.elementId)
-                ?.get(key.value) as LiveInteraction<T>
-    }
+    fun find(key: InteractionKey) = interactions[key]
 
-    fun unregisterBlock(blockId: String) {
-        interactions.remove(blockId)
+    fun clearInteractions() {
+        interactions.clear()
     }
 }

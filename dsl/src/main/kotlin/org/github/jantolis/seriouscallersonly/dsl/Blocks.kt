@@ -2,7 +2,6 @@ package org.github.jantolis.seriouscallersonly.dsl
 
 import java.net.URL
 
-
 interface MessageBlock
 interface ModalBlock
 interface HomeTabBlock

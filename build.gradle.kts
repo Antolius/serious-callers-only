@@ -1,4 +1,3 @@
-import org.gradle.plugins.ide.idea.model.IdeaLanguageLevel
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 buildscript {

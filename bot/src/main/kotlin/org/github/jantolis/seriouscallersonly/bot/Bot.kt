@@ -2,17 +2,19 @@ package org.github.jantolis.seriouscallersonly.bot
 
 import com.slack.api.bolt.App
 import com.slack.api.bolt.context.Context
+import com.slack.api.model.block.Blocks
+import com.slack.api.model.block.SectionBlock
+import com.slack.api.model.block.composition.PlainTextObject
 import com.slack.api.model.event.MemberJoinedChannelEvent
-import com.slack.api.model.event.MessageEvent
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.github.jantolis.seriouscallersonly.dsl.*
+import java.time.Clock
 import java.time.Instant
 
+val conversations = mutableMapOf<ConversationKey, Conversation>()
 
-val interactions = mutableMapOf<String, MutableMap<String, MutableMap<String, LiveInteraction<*>>>>()
-
-fun slackApp(bot: Bot) = App().apply {
+fun slackApp(bot: Bot, clock: Clock = Clock.systemUTC()) = App().apply {
 
     event(MemberJoinedChannelEvent::class.java) { payload, ctx ->
         val user = User(payload.event.user)
@@ -23,8 +25,7 @@ fun slackApp(bot: Bot) = App().apply {
             bot.channelProtocols[channel]?.onUserJoinChannel?.curry(user)
         }?.apply {
             GlobalScope.launch {
-                val conv = Conversation(channel = channel, user = user)
-                val convCtx = ConversationContext(conversation = conv, interactions = interactions)
+                val convCtx = Conversation(user = user, channel = channel)
                 val botReply = replier(null)
                 ctx.reply(botReply, convCtx)
             }
@@ -32,60 +33,149 @@ fun slackApp(bot: Bot) = App().apply {
         ctx.ack()
     }
 
-//    event(MessageEvent::class.java) { payload, ctx ->
-//        val msgEvent = payload.event
-//        if (msgEvent.subtype == null) {
-//            val channel = payload.event.channel
-//            val user = payload.event.user
-//            val thread = payload.event.ts
-//            val isMsgOutsideThread = msgEvent.subtype == null && msgEvent.threadTs == null
-//            if (isMsgOutsideThread) {
-//                val protocol = protocols[channel]
-//                if (protocol != null) {
-//                    val now = Moment(Instant.now(), ctx.userTimeZone(user))
-//                    val msg = HistoryMessage(msgEvent.clientMsgId, User(user), now, msgEvent.text)
-//                    val conv = Conversation(channel = Channel(channel), thread = Thread(thread)).append(msg)
-//                    val replyCtx = SlackReplyCtx(ctx.client(), user, channel, conv, store.register(conv))
-//                    protocol.newMessageCallback(replyCtx, msg)
-//                }
-//            }
-//        }
-//        ctx.ack()
-//    }
-//
-//    blockAction(".*".toPattern()) { req, ctx ->
-//        val action = req.payload.actions.firstOrNull()
-//        if (action != null) {
-//            val savedState = store.find(action.actionId)
-//            if (savedState != null) {
-//                val (conv, replies) = savedState
-//                val reply = replies[action.selectedOption?.value]
-//                if (reply != null) {
-//                    val user = conv.user()
-//                    val channel = conv.channel
-//                    val now = Moment(Instant.now(), ctx.userTimeZone(user.id))
-//                    val msg = HistoryMessage(action.actionId, user, now, action.text?.text
-//                            ?: action.selectedOption?.value ?: "answer")
-//                    val newConv = conv.append(msg)
-//                    val replyCtx = SlackReplyCtx(ctx.client(), user.id, channel.id, newConv, store.register(newConv))
-//                    replyCtx.reply()
-//                    store.unregister(action.actionId)
-//                }
-//            }
-//        }
-//        ctx.ack()
-//    }
+    command(".*".toPattern()) { req, ctx ->
+        val command = Command(req.payload.command)
+        val author = User(req.payload.userId)
+        val channel = Channel(req.payload.channelId)
+        val invocation = CommandInvocation(
+                text = req.payload.text,
+                command = command,
+                invoker = author,
+                channel = channel,
+                timestamp = Instant.now(clock)
+        )
+        bot.commandProtocols[command]
+                ?.onSlashCommand
+                ?.curry(invocation)
+                ?.apply {
+                    GlobalScope.launch {
+                        val convCtx = Conversation(
+                                channel = channel,
+                                user = author,
+                                triggerId = req.payload.triggerId
+                        )
+                        try {
+                            val botReply = replier(null)
+                            ctx.reply(botReply, convCtx)
+                        } finally {
+                            ctx.triggerId = null
+                        }
+                    }
+                }
+        ctx.ack()
+    }
+
+    blockAction(".*".toPattern()) { req, ctx ->
+        val convKey = ConversationKey(
+                channel = Channel(req.payload.channel.id),
+                messageTs = req.payload.message.ts
+        )
+        val convCtx = conversations[convKey] ?: return@blockAction ctx.ack()
+        val action = req.payload.actions.first() ?: return@blockAction ctx.ack()
+        val value = if (action.selectedOption != null) {
+            action.selectedOption.value
+        } else {
+            action.text.text
+        }
+        val interactionKey = InteractionKey(
+                elementId = action.actionId,
+                value = value
+        )
+        val interaction = convCtx.find(interactionKey) ?: return@blockAction ctx.ack()
+        interaction.ctx.triggerId = req.payload.triggerId
+        if (convCtx.messageTsToDelete != null) {
+            val delRes = ctx.client().chatDelete {
+                it.channel(convCtx.channel.id)
+                it.ts(convCtx.messageTsToDelete)
+            }
+            convCtx.messageTsToDelete = null
+            println(delRes)
+        }
+        try {
+            val validator = interaction.validator
+            val inter = Interaction(
+                    value = value,
+                    channel = convCtx.channel,
+                    actor = User(req.payload.user.id),
+                    timestamp = Instant.now(clock)
+            )
+            val errors = validator?.validator?.invoke(inter) ?: listOf()
+            if (errors.isNotEmpty()) {
+                val slackErrRes = ctx.client()
+                        .chatPostMessage {
+                            it.channel(convKey.channel.id)
+                            val ts = convCtx.thread
+                            if (ts != null) {
+                                it.threadTs(ts.id)
+                            }
+                            it.blocks(Blocks.asBlocks(SectionBlock.builder().text(PlainTextObject.builder().text(errors.joinToString(
+                                    separator = "\n:warning: ",
+                                    prefix = ":warning: "
+                            )).build()).build()))
+                        }
+                convCtx.messageTsToDelete = slackErrRes.ts
+            } else {
+                GlobalScope.launch {
+                    val botReply = interaction.replier.replier(inter)
+                    ctx.reply(botReply, interaction.ctx)
+                }
+            }
+        } finally {
+            interaction.ctx.triggerId = null
+        }
+        ctx.ack()
+    }
+
 }
 
 fun <T> Replier<T>.curry(t: T) = VoidReplier { this.replier(t) }
 
-suspend fun Context.reply(reply: Reply, ctx: ConversationContext) {
+suspend fun Context.reply(reply: Reply, ctx: Conversation) {
+    val conversationKey = ctx.key
+    if (conversationKey != null) {
+        conversations.remove(conversationKey)
+    }
     when (reply) {
         is Reply.Message -> {
-            val slackMsg = ctx.mapToSlackMessage(reply)
-            client().chatPostMessage(slackMsg)
+            when (val visibleTo = reply.visibleTo) {
+                is Visibility.Ephemeral -> {
+                    val slackMsg = ctx.mapToEphemeralMessage(reply, visibleTo.user)
+                    val slackResp = client().chatPostEphemeral(slackMsg)
+                    if (!slackResp.isOk) {
+                        throw Exception(slackResp.error)
+                    }
+                    ctx.key = ConversationKey(ctx.channel, slackResp.messageTs)
+                    conversations[ctx.key!!] = ctx
+                }
+                Visibility.Public -> {
+                    val slackMsg = ctx.mapToPublicMessage(reply)
+                    val slackResp = client().chatPostMessage(slackMsg)
+                    if (!slackResp.isOk) {
+                        throw Exception(slackResp.error)
+                    }
+                    ctx.updateableMessageTs = slackResp.ts
+                    ctx.key = ConversationKey(ctx.channel, slackResp.ts)
+                    conversations[ctx.key!!] = ctx
+                }
+            }
             reply.andThen?.also {
                 this.reply(it.replier(null), ctx)
+            }
+        }
+        is Reply.ReplacementMessage -> {
+            val messageTsoUpdate = ctx.updateableMessageTs
+            if (messageTsoUpdate != null) {
+                val slackMsg = ctx.mapToUpdateMessage(reply, messageTsoUpdate)
+                val slackResp = client().chatUpdate(slackMsg)
+                if (!slackResp.isOk) {
+                    throw Exception(slackResp.error)
+                }
+                ctx.updateableMessageTs = slackResp.ts
+                ctx.key = ConversationKey(ctx.channel, slackResp.ts)
+                conversations[ctx.key!!] = ctx
+                reply.andThen?.also {
+                    this.reply(it.replier(null), ctx)
+                }
             }
         }
         else -> {

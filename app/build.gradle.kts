@@ -12,6 +12,8 @@ apply {
     plugin("io.spring.dependency-management")
 }
 
+ext["okhttp3.version"] = "4.4.1"
+
 dependencies {
     implementation(project(":bot"))
 

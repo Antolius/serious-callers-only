@@ -16,8 +16,8 @@ sealed class Element {
     class Button(
             val text: Text.Plain,
             val style: ButtonStyle = ButtonStyle.DEFAULT,
-            val onClick: VoidReplier,
-            val onClickReplaceWith: Replacer<Void?>? = null
+            val validate: Validator? = null,
+            val onClick: Replier<Interaction>
     ) : Element(), SectionElement, ActionElement
 
     class Image(
@@ -27,25 +27,21 @@ sealed class Element {
 
     class Select(
             val placeholder: Text.Plain,
-            val options: List<Option>,
-            val onSelectReplaceWith: Replacer<Option>? = null
+            val options: List<Option>
     ) : Element(), SectionElement, InputElement
 
-    class Overflow(
-            val options: List<Option>,
-            val onSelectReplaceWith: Replacer<Option>? = null
-    ) : Element(), SectionElement, ActionElement
+    class Overflow(val options: List<Option>) : Element(), SectionElement, ActionElement
 
     class TextInput(
             val placeholder: Text.Plain? = null,
             val initialValue: String? = null,
             val multiline: Boolean = false,
-            val validate: Validator<String>
+            val validate: Validator
     ) : Element(), InputElement
 }
 
-enum class ButtonStyle(val style: String) {
-    DEFAULT("default"),
+enum class ButtonStyle(val style: String?) {
+    DEFAULT(null),
     PRIMARY("primary"),
     DANGER("danger")
 }
@@ -53,5 +49,5 @@ enum class ButtonStyle(val style: String) {
 class Option(
         val text: Element.Text.Plain,
         val description: Element.Text.Plain? = null,
-        val onSelect: VoidReplier
+        val onSelect: Replier<Interaction>
 )
