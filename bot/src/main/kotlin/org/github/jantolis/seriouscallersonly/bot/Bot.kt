@@ -8,11 +8,12 @@ import com.slack.api.model.block.composition.PlainTextObject
 import com.slack.api.model.event.MemberJoinedChannelEvent
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import org.github.jantolis.seriouscallersonly.bot.repository.ConcurrentRepo
 import org.github.jantolis.seriouscallersonly.dsl.*
 import java.time.Clock
 import java.time.Instant
 
-val conversations = mutableMapOf<ConversationKey, Conversation>()
+val conversations = ConcurrentRepo<ConversationKey, Conversation>()
 
 fun slackApp(bot: Bot, clock: Clock = Clock.systemUTC()) = App().apply {
 
@@ -66,62 +67,64 @@ fun slackApp(bot: Bot, clock: Clock = Clock.systemUTC()) = App().apply {
     }
 
     blockAction(".*".toPattern()) { req, ctx ->
-        val convKey = ConversationKey(
-                channel = Channel(req.payload.channel.id),
-                messageTs = req.payload.message.ts
-        )
-        val convCtx = conversations[convKey] ?: return@blockAction ctx.ack()
-        val action = req.payload.actions.first() ?: return@blockAction ctx.ack()
-        val value = if (action.selectedOption != null) {
-            action.selectedOption.value
-        } else {
-            action.text.text
-        }
-        val interactionKey = InteractionKey(
-                elementId = action.actionId,
-                value = value
-        )
-        val interaction = convCtx.find(interactionKey) ?: return@blockAction ctx.ack()
-        interaction.ctx.triggerId = req.payload.triggerId
-        if (convCtx.messageTsToDelete != null) {
-            val delRes = ctx.client().chatDelete {
-                it.channel(convCtx.channel.id)
-                it.ts(convCtx.messageTsToDelete)
-            }
-            convCtx.messageTsToDelete = null
-            println(delRes)
-        }
-        try {
-            val validator = interaction.validator
-            val inter = Interaction(
-                    value = value,
-                    channel = convCtx.channel,
-                    actor = User(req.payload.user.id),
-                    timestamp = Instant.now(clock)
+        GlobalScope.launch {
+            val convKey = ConversationKey(
+                    channel = Channel(req.payload.channel.id),
+                    messageTs = req.payload.message.ts
             )
-            val errors = validator?.validator?.invoke(inter) ?: listOf()
-            if (errors.isNotEmpty()) {
-                val slackErrRes = ctx.client()
-                        .chatPostMessage {
-                            it.channel(convKey.channel.id)
-                            val ts = convCtx.thread
-                            if (ts != null) {
-                                it.threadTs(ts.id)
-                            }
-                            it.blocks(Blocks.asBlocks(SectionBlock.builder().text(PlainTextObject.builder().text(errors.joinToString(
-                                    separator = "\n:warning: ",
-                                    prefix = ":warning: "
-                            )).build()).build()))
-                        }
-                convCtx.messageTsToDelete = slackErrRes.ts
+            val convCtx = conversations.find(convKey) ?: return@launch
+            val action = req.payload.actions.first() ?: return@launch
+            val value = if (action.selectedOption != null) {
+                action.selectedOption.value
             } else {
-                GlobalScope.launch {
-                    val botReply = interaction.replier.replier(inter)
-                    ctx.reply(botReply, interaction.ctx)
-                }
+                action.text.text
             }
-        } finally {
-            interaction.ctx.triggerId = null
+            val interactionKey = InteractionKey(
+                    elementId = action.actionId,
+                    value = value
+            )
+            val interaction = convCtx.find(interactionKey) ?: return@launch
+            interaction.conversation.triggerId = req.payload.triggerId
+            if (convCtx.messageTsToDelete != null) {
+                val delRes = ctx.client().chatDelete {
+                    it.channel(convCtx.channel.id)
+                    it.ts(convCtx.messageTsToDelete)
+                }
+                convCtx.messageTsToDelete = null
+                println(delRes)
+            }
+
+            try {
+                val validator = interaction.validator
+                val inter = Interaction(
+                        value = value,
+                        channel = convCtx.channel,
+                        actor = User(req.payload.user.id),
+                        timestamp = Instant.now(clock)
+                )
+                val errors = validator?.validator?.invoke(inter) ?: listOf()
+                if (errors.isNotEmpty()) {
+                    val slackErrRes = ctx.client()
+                            .chatPostMessage {
+                                it.channel(convKey.channel.id)
+                                val ts = convCtx.thread
+                                if (ts != null) {
+                                    it.threadTs(ts.id)
+                                }
+                                it.blocks(Blocks.asBlocks(SectionBlock.builder().text(PlainTextObject.builder().text(errors.joinToString(
+                                        separator = "\n:warning: ",
+                                        prefix = ":warning: "
+                                )).build()).build()))
+                            }
+                    convCtx.messageTsToDelete = slackErrRes.ts
+                } else {
+
+                    val botReply = interaction.replier.replier(inter)
+                    ctx.reply(botReply, interaction.conversation)
+                }
+            } finally {
+                interaction.conversation.triggerId = null
+            }
         }
         ctx.ack()
     }
@@ -145,7 +148,7 @@ suspend fun Context.reply(reply: Reply, ctx: Conversation) {
                         throw Exception(slackResp.error)
                     }
                     ctx.key = ConversationKey(ctx.channel, slackResp.messageTs)
-                    conversations[ctx.key!!] = ctx
+                    conversations.store(ctx.key!!, ctx)
                 }
                 Visibility.Public -> {
                     val slackMsg = ctx.mapToPublicMessage(reply)
@@ -155,7 +158,7 @@ suspend fun Context.reply(reply: Reply, ctx: Conversation) {
                     }
                     ctx.updateableMessageTs = slackResp.ts
                     ctx.key = ConversationKey(ctx.channel, slackResp.ts)
-                    conversations[ctx.key!!] = ctx
+                    conversations.store(ctx.key!!, ctx)
                 }
             }
             reply.andThen?.also {
@@ -172,7 +175,7 @@ suspend fun Context.reply(reply: Reply, ctx: Conversation) {
                 }
                 ctx.updateableMessageTs = slackResp.ts
                 ctx.key = ConversationKey(ctx.channel, slackResp.ts)
-                conversations[ctx.key!!] = ctx
+                conversations.store(ctx.key!!, ctx)
                 reply.andThen?.also {
                     this.reply(it.replier(null), ctx)
                 }

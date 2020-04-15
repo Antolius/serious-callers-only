@@ -1,5 +1,7 @@
 package org.github.jantolis.seriouscallersonly.bot
 
+import org.github.jantolis.seriouscallersonly.bot.repository.ConcurrentRepo
+import org.github.jantolis.seriouscallersonly.bot.repository.Repo
 import org.github.jantolis.seriouscallersonly.dsl.*
 
 data class InteractionKey(
@@ -12,7 +14,7 @@ class LiveInteraction(
         val validator: Validator? = null,
         val replier: Replier<Interaction>
 ) {
-    lateinit var ctx: Conversation
+    lateinit var conversation: Conversation
 }
 
 data class ConversationKey(
@@ -26,20 +28,13 @@ class Conversation(
         val thread: Thread? = null,
         var triggerId: String? = null,
         var updateableMessageTs: String? = null,
-        var messageTsToDelete: String? = null
-) {
+        var messageTsToDelete: String? = null,
+        val interactionsRepo: Repo<InteractionKey, LiveInteraction> = ConcurrentRepo()
+) : Repo<InteractionKey, LiveInteraction> by interactionsRepo {
     var key: ConversationKey? = null
 
-    private val interactions = mutableMapOf<InteractionKey, LiveInteraction>()
-
-    fun register(interaction: LiveInteraction) {
-        interaction.ctx = this
-        interactions[interaction.key] = interaction
-    }
-
-    fun find(key: InteractionKey) = interactions[key]
-
-    fun clearInteractions() {
-        interactions.clear()
+    override suspend fun store(key: InteractionKey, element: LiveInteraction) {
+        element.conversation = this
+        interactionsRepo.store(key, element)
     }
 }

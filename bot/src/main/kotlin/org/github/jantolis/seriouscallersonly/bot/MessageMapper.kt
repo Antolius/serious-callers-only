@@ -14,8 +14,8 @@ import com.slack.api.model.block.element.StaticSelectElement
 import org.github.jantolis.seriouscallersonly.dsl.*
 import java.util.*
 
-fun Conversation.mapToPublicMessage(message: Reply.Message): ChatPostMessageRequest {
-    clearInteractions()
+suspend fun Conversation.mapToPublicMessage(message: Reply.Message): ChatPostMessageRequest {
+    clear()
     return ChatPostMessageRequest.builder()
             .channel(channel.id)
             .threadTs(thread?.id)
@@ -23,8 +23,8 @@ fun Conversation.mapToPublicMessage(message: Reply.Message): ChatPostMessageRequ
             .build()
 }
 
-fun Conversation.mapToEphemeralMessage(message: Reply.Message, user: User): ChatPostEphemeralRequest {
-    clearInteractions()
+suspend fun Conversation.mapToEphemeralMessage(message: Reply.Message, user: User): ChatPostEphemeralRequest {
+    clear()
     return ChatPostEphemeralRequest.builder()
             .channel(channel.id)
             .threadTs(thread?.id)
@@ -33,8 +33,8 @@ fun Conversation.mapToEphemeralMessage(message: Reply.Message, user: User): Chat
             .build()
 }
 
-fun Conversation.mapToUpdateMessage(message: Reply.ReplacementMessage, tsToUpdate: String): ChatUpdateRequest {
-    clearInteractions()
+suspend fun Conversation.mapToUpdateMessage(message: Reply.ReplacementMessage, tsToUpdate: String): ChatUpdateRequest {
+    clear()
     return ChatUpdateRequest.builder()
             .channel(channel.id)
             .ts(tsToUpdate)
@@ -42,7 +42,7 @@ fun Conversation.mapToUpdateMessage(message: Reply.ReplacementMessage, tsToUpdat
             .build()
 }
 
-private fun MessageBlock.toSlackBlock(ctx: Conversation) =
+private suspend fun MessageBlock.toSlackBlock(ctx: Conversation) =
         when (this) {
             is Block.Actions -> this.toSlackBlock(ctx)
             is Block.Context -> this.toSlackBlock(ctx)
@@ -52,33 +52,33 @@ private fun MessageBlock.toSlackBlock(ctx: Conversation) =
             else -> null
         }
 
-private fun Block.Section.toSlackBlock(ctx: Conversation): SectionBlock =
+private suspend fun Block.Section.toSlackBlock(ctx: Conversation): SectionBlock =
         SectionBlock.builder()
                 .text(text.toSlackElement(ctx))
                 .fields(fields?.map { it.toSlackElement(ctx) })
                 .accessory(accessory?.toSlackElement(ctx))
                 .build()
 
-private fun Block.Image.toSlackBlock(ctx: Conversation) =
+private suspend fun Block.Image.toSlackBlock(ctx: Conversation) =
         ImageBlock.builder()
                 .imageUrl(url.toExternalForm())
                 .altText(altText)
                 .title(title?.toSlackElement(ctx))
                 .build()
 
-private fun Block.Divider.toSlackBlock(ctx: Conversation) = DividerBlock()
+private suspend fun Block.Divider.toSlackBlock(ctx: Conversation) = DividerBlock()
 
-private fun Block.Context.toSlackBlock(ctx: Conversation) =
+private suspend fun Block.Context.toSlackBlock(ctx: Conversation) =
         ContextBlock.builder()
                 .elements(elements.mapNotNull { it.toSlackElement(ctx) })
                 .build()
 
-private fun Block.Actions.toSlackBlock(ctx: Conversation): ActionsBlock =
+private suspend fun Block.Actions.toSlackBlock(ctx: Conversation): ActionsBlock =
         ActionsBlock.builder()
                 .elements(elements.mapNotNull { it.toSlackElement(ctx) })
                 .build()
 
-private fun ContextElement.toSlackElement(ctx: Conversation) =
+private suspend fun ContextElement.toSlackElement(ctx: Conversation) =
         when (this) {
             is Element.Text.Plain -> this.toSlackElement(ctx)
             is Element.Text.Markdown -> this.toSlackElement(ctx)
@@ -86,7 +86,7 @@ private fun ContextElement.toSlackElement(ctx: Conversation) =
             else -> null
         }
 
-private fun SectionElement.toSlackElement(ctx: Conversation) =
+private suspend fun SectionElement.toSlackElement(ctx: Conversation) =
         when (this) {
             is Element.Button -> this.toSlackElement(ctx)
             is Element.Image -> this.toSlackElement(ctx)
@@ -95,41 +95,42 @@ private fun SectionElement.toSlackElement(ctx: Conversation) =
             else -> null
         }
 
-private fun ActionElement.toSlackElement(ctx: Conversation) =
+private suspend fun ActionElement.toSlackElement(ctx: Conversation) =
         when (this) {
             is Element.Button -> this.toSlackElement(ctx)
             is Element.Overflow -> this.toSlackElement(ctx)
             else -> null
         }
 
-private fun Element.Text.toSlackElement(ctx: Conversation) =
+private suspend fun Element.Text.toSlackElement(ctx: Conversation) =
         when (this) {
             is Element.Text.Plain -> this.toSlackElement(ctx)
             is Element.Text.Markdown -> this.toSlackElement(ctx)
         }
 
-private fun Element.Text.Plain.toSlackElement(ctx: Conversation) =
+private suspend fun Element.Text.Plain.toSlackElement(ctx: Conversation) =
         PlainTextObject.builder()
                 .text(text)
                 .emoji(emoji)
                 .build()
 
-private fun Element.Text.Markdown.toSlackElement(ctx: Conversation) =
+private suspend fun Element.Text.Markdown.toSlackElement(ctx: Conversation) =
         MarkdownTextObject.builder()
                 .text(text)
                 .verbatim(verbatim)
                 .build()
 
-private fun Element.Image.toSlackElement(ctx: Conversation) =
+private suspend fun Element.Image.toSlackElement(ctx: Conversation) =
         ImageElement.builder()
                 .imageUrl(url.toExternalForm())
                 .altText(altText)
                 .build()
 
-private fun Element.Button.toSlackElement(ctx: Conversation): ButtonElement {
+private suspend fun Element.Button.toSlackElement(ctx: Conversation): ButtonElement {
     val elementId = UUID.randomUUID().toString()
-    ctx.register(LiveInteraction(
-            key = InteractionKey(elementId = elementId, value = text.text),
+    val key = InteractionKey(elementId = elementId, value = text.text)
+    ctx.store(key, LiveInteraction(
+            key = key,
             replier = onClick,
             validator = validate
     ))
@@ -140,7 +141,7 @@ private fun Element.Button.toSlackElement(ctx: Conversation): ButtonElement {
             .build()
 }
 
-private fun Element.Select.toSlackElement(ctx: Conversation): StaticSelectElement {
+private suspend fun Element.Select.toSlackElement(ctx: Conversation): StaticSelectElement {
     val elementId = UUID.randomUUID().toString()
     return StaticSelectElement.builder()
             .actionId(elementId)
@@ -149,7 +150,7 @@ private fun Element.Select.toSlackElement(ctx: Conversation): StaticSelectElemen
             .build()
 }
 
-private fun Element.Overflow.toSlackElement(ctx: Conversation): OverflowMenuElement {
+private suspend fun Element.Overflow.toSlackElement(ctx: Conversation): OverflowMenuElement {
     val elementId = UUID.randomUUID().toString()
     return OverflowMenuElement.builder()
             .actionId(elementId)
@@ -157,13 +158,14 @@ private fun Element.Overflow.toSlackElement(ctx: Conversation): OverflowMenuElem
             .build()
 }
 
-private fun Option.toSlackOption(
+private suspend fun Option.toSlackOption(
         ctx: Conversation,
         elementId: String
 ): OptionObject {
     val value = UUID.randomUUID().toString()
-    ctx.register(LiveInteraction(
-            key = InteractionKey(elementId = elementId, value = value),
+    val key = InteractionKey(elementId = elementId, value = value)
+    ctx.store(key, LiveInteraction(
+            key = key,
             replier = onSelect
     ))
     return OptionObject.builder()

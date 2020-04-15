@@ -107,7 +107,7 @@ class DslTest {
     private fun toOption(guess: Int, game: Game): Option {
         return Option(
                 text = Element.Text.Plain("$guess"),
-                onSelect = VoidReplier {
+                onSelect = Replier {
                     if (guess == game.answer) {
                         Reply.Message(blocks = listOf(Block.Section(text = Element.Text.Plain("Correct!!!"))))
                     } else {
