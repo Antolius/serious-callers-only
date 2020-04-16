@@ -34,11 +34,15 @@ class Validator(val validator: (interaction: Interaction) -> Errors)
 typealias Errors = List<String>
 
 class ChannelProtocol(
+    val channel: Channel,
     val onUserJoinChannel: Replier<User>? = null,
     val onNewChannelMessage: Replier<PostedMessage>? = null
 )
 
-class CommandProtocol(val onSlashCommand: Replier<CommandInvocation>)
+class CommandProtocol(
+    val command: Command,
+    val onSlashCommand: Replier<CommandInvocation>
+)
 
 class Bot(
     val channelProtocols: Map<Channel, ChannelProtocol> = mapOf(),

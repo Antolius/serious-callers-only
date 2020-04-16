@@ -10,7 +10,7 @@ interface UniversalBlock : MessageBlock, ModalBlock, HomeTabBlock
 sealed class Block {
     class Actions(val elements: List<ActionElement>) : Block(), UniversalBlock
     class Context(val elements: List<ContextElement>) : Block(), UniversalBlock
-    class Divider() : Block(), UniversalBlock
+    object Divider : Block(), UniversalBlock
     class Image(
         val url: URL,
         val altText: String,

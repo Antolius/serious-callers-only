@@ -8,7 +8,7 @@ buildscript {
 
 plugins {
     idea
-    kotlin("jvm") version "1.3.71"
+    kotlin("jvm") version "1.3.72"
     kotlin("plugin.spring") version "1.3.71" apply false
     id("org.springframework.boot") version "2.2.0.RELEASE" apply false
     id("io.spring.dependency-management") version "1.0.8.RELEASE" apply false
@@ -30,14 +30,14 @@ allprojects {
     }
 
     tasks.withType<JavaCompile> {
-        sourceCompatibility = "13"
-        targetCompatibility = "13"
+        sourceCompatibility = "1.8"
+        targetCompatibility = "1.8"
     }
 
     tasks.withType<KotlinCompile> {
         kotlinOptions {
             freeCompilerArgs = listOf("-Xjsr305=strict")
-            jvmTarget = "13"
+            jvmTarget = "1.8"
         }
     }
 
@@ -52,7 +52,7 @@ subprojects {
     }
 
     dependencies {
-        implementation(kotlin("stdlib"))
+        implementation(kotlin("stdlib-jdk8"))
 
         testImplementation("org.junit.jupiter:junit-jupiter-api:5.3.1")
         testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.3.1")

@@ -79,7 +79,8 @@ class DslTest {
                             )
                         )
                     ))
-                })
+                },
+                channel = Channel("some-channel-id"))
             )
         )
     }
