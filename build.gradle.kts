@@ -22,7 +22,7 @@ idea {
 }
 
 allprojects {
-    group = "org.github.jantolis.seriouscallersonly"
+    group = "hr.from.josipantolis.seriouscallersonly"
     version = "0.1.0-SNAPSHOT"
 
     repositories {

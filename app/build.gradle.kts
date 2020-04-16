@@ -5,7 +5,7 @@ plugins {
 }
 
 application {
-    mainClassName = "org.github.jantolis.seriouscallersonly.app.Main"
+    mainClassName = "hr.from.josipantolis.seriouscallersonly.app.Main"
 }
 
 apply {
