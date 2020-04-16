@@ -1,7 +1,7 @@
 package hr.from.josipantolis.seriouscallersonly.app.games
 
-import hr.from.josipantolis.seriouscallersonly.dsl.CommandProtocol
-import hr.from.josipantolis.seriouscallersonly.dsl.Replier
+import hr.from.josipantolis.seriouscallersonly.api.CommandProtocol
+import hr.from.josipantolis.seriouscallersonly.api.Replier
 
 fun playCommandProtocol() = CommandProtocol(Replier {
     val txt = (it.text ?: "").toLowerCase().replace("\\s".toRegex(), "")

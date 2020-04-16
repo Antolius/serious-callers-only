@@ -4,10 +4,10 @@ package hr.from.josipantolis.seriouscallersonly.app
 
 import com.slack.api.bolt.App
 import com.slack.api.bolt.servlet.SlackAppServlet
+import hr.from.josipantolis.seriouscallersonly.api.Bot
+import hr.from.josipantolis.seriouscallersonly.api.Command
 import hr.from.josipantolis.seriouscallersonly.app.games.playCommandProtocol
-import hr.from.josipantolis.seriouscallersonly.bot.slackApp
-import hr.from.josipantolis.seriouscallersonly.dsl.Bot
-import hr.from.josipantolis.seriouscallersonly.dsl.Command
+import hr.from.josipantolis.seriouscallersonly.runtime.slack.slackApp
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.boot.web.servlet.ServletComponentScan
@@ -29,10 +29,12 @@ fun main(args: Array<String>) {
 
 fun beans() = beans {
     bean {
-        slackApp(bot = Bot(
+        slackApp(
+            bot = Bot(
                 commandProtocols = mapOf(
-                        Command("/play") to playCommandProtocol()
+                    Command("/play") to playCommandProtocol()
                 )
-        ))
+            )
+        )
     }
 }

@@ -15,7 +15,7 @@ apply {
 ext["okhttp3.version"] = "4.4.1"
 
 dependencies {
-    implementation(project(":bot"))
+    implementation(project(":slack-runtime"))
 
     implementation(kotlin("reflect"))
     implementation("org.springframework.boot:spring-boot-starter")

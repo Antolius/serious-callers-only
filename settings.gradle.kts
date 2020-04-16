@@ -1,3 +1,3 @@
 rootProject.name = "serious-callers-only"
 
-include("dsl", "bot", "app")
+include("api", "slack-runtime", "app")
