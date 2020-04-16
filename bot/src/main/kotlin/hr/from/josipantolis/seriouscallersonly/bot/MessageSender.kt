@@ -35,7 +35,7 @@ interface SlackClient {
 }
 
 class MessageSender(
-        private val convRepo: Repo<ConversationKey, Conversation>,
+        private val convRepo: Repo<ConversationKey?, Conversation>,
         private val client: SlackClient
 ) {
     suspend fun sendReply(reply: Reply, conv: Conversation) {
@@ -72,7 +72,7 @@ class MessageSender(
     }
 
     private suspend fun clearPreExistingConversations(conv: Conversation) {
-        conv.key.also { convRepo.remove(it) }
+        conv.key?.also { convRepo.remove(it) }
     }
 
     private suspend fun sendEphemeralMessage(msg: Reply.Message, visibleTo: Visibility.Ephemeral, conv: Conversation) {

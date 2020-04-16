@@ -32,7 +32,7 @@ class Conversation(
         var messageTsToDelete: String? = null,
         val interactionsRepo: Repo<InteractionKey, LiveInteraction> = ConcurrentRepo(MapRepo { it.key })
 ) : Repo<InteractionKey, LiveInteraction> by interactionsRepo {
-    lateinit var key: ConversationKey
+    var key: ConversationKey? = null
 
     override suspend fun store(element: LiveInteraction) {
         element.conversation = this

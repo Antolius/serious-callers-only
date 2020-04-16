@@ -10,7 +10,7 @@ import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.Instant
 
-val conversations = ConcurrentRepo<ConversationKey, Conversation>(MapRepo { it.key })
+val conversations = ConcurrentRepo<ConversationKey?, Conversation>(MapRepo { it.key })
 
 fun slackApp(bot: Bot, clock: Clock = Clock.systemUTC()) = App().apply {
 
