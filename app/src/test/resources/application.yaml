@@ -1,1 +1,8 @@
 context.initializer.classes: hr.from.josipantolis.seriouscallersonly.app.TestInitializer
+management:
+  port: 0
+sco:
+  scripts.dir: 'src/test/resources/scripts'
+  slack:
+    signing.secret: 'mock-secret'
+    bot.token: 'mock-token'

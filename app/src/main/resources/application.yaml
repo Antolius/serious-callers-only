@@ -1,4 +1,14 @@
-logging.level:
-  com.slack.api: TRACE
 server:
   port: 3000
+management:
+  server.port: 3001
+  endpoints:
+    web.exposure.include: helth,info,prometheus,loggers,env,bot
+    endpoint:
+      health.show-details: always
+spring.jmx.enabled: false
+sco:
+  scripts.dir: ${SCO_SCRIPTS_DIR}
+  slack:
+    signing.secret: ${SCO_SLACK_SIGNING_SECRET}
+    bot.token: ${SCO_SLACK_BOT_TOKEN}

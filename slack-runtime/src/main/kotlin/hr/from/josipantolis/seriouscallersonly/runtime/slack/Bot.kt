@@ -1,6 +1,7 @@
 package hr.from.josipantolis.seriouscallersonly.runtime.slack
 
 import com.slack.api.bolt.App
+import com.slack.api.bolt.AppConfig
 import com.slack.api.model.event.MemberJoinedChannelEvent
 import hr.from.josipantolis.seriouscallersonly.api.*
 import hr.from.josipantolis.seriouscallersonly.runtime.slack.repository.ConcurrentRepo
@@ -12,7 +13,11 @@ import java.time.Instant
 
 val conversations = ConcurrentRepo<ConversationKey?, Conversation>(MapRepo { it.key })
 
-fun slackApp(bot: Bot, clock: Clock = Clock.systemUTC()) = App().apply {
+fun slackApp(
+    bot: Bot,
+    config: AppConfig = AppConfig(),
+    clock: Clock = Clock.systemUTC()
+) = App(config).apply {
 
     event(MemberJoinedChannelEvent::class.java) { payload, ctx ->
         val user = User(payload.event.user)
