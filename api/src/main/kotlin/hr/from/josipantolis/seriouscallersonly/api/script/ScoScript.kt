@@ -8,12 +8,16 @@ import kotlin.script.experimental.annotations.KotlinScript
 
 @KotlinScript(
     displayName = "SCO Script",
-    fileExtension = "sco.kts",
+    fileExtension = ScoScriptCtx.FILE_EXTENSION,
     compilationConfiguration = ScoCompilationConfig::class
 )
 abstract class ScoScript(private val ctx: ScoScriptCtx) : ScoScriptCtx by ctx
 
 interface ScoScriptCtx {
+    companion object {
+        const val FILE_EXTENSION = "call.kts"
+    }
+
     val env: Properties
     fun register(channelProtocol: ChannelProtocol)
     fun register(commandProtocol: CommandProtocol)

@@ -22,7 +22,7 @@ class Loader(
     fun load(scriptsDir: File) = scriptsDir.walkBottomUp()
         .onEnter { it.canRead() }
         .filter { it.isFile }
-        .filter { it.name.endsWith(".sco.kts") }
+        .filter { it.name.endsWith(".${ScoScriptCtx.FILE_EXTENSION}") }
         .map { it.readText(StandardCharsets.UTF_8) }
         .map { it.toScriptSource() }
         .fold(BotBuilder(env), this::runScript)
