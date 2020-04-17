@@ -23,13 +23,19 @@ fun slackApp(
         val user = User(payload.event.user)
         val channel = Channel(payload.event.channel)
         if (user.id == ctx.botUserId) {
-            bot.onBotJoinChannel?.curry(channel)
+            bot.onBotJoinChannel?.curry(Event.BotJoinedChannel(channel, Instant.now(clock)))
         } else {
-            bot.channelProtocols[channel]?.onUserJoinChannel?.curry(user)
+            bot.channelProtocols[channel]?.onUserJoined?.curry(
+                Event.UserJoinedChannel(
+                    channel,
+                    Instant.now(clock),
+                    user
+                )
+            )
         }?.apply {
             GlobalScope.launch {
                 val convCtx = Conversation(user = user, channel = channel)
-                val botReply = replier(null)
+                val botReply = cb()
                 MessageSender(conversations, AsyncSlackClient(ctx.asyncClient()))
                     .sendReply(botReply, convCtx)
             }
@@ -41,15 +47,15 @@ fun slackApp(
         val command = Command(req.payload.command)
         val author = User(req.payload.userId)
         val channel = Channel(req.payload.channelId)
-        val invocation = CommandInvocation(
-            text = req.payload.text,
+        val invocation = Event.CommandInvoked(
+            channel = channel,
+            happenedAt = Instant.now(clock),
             command = command,
             invoker = author,
-            channel = channel,
-            timestamp = Instant.now(clock)
+            invocationText = req.payload.text ?: ""
         )
         bot.commandProtocols[command]
-            ?.onSlashCommand
+            ?.onCommandInvoked
             ?.curry(invocation)
             ?.apply {
                 GlobalScope.launch {
@@ -59,7 +65,7 @@ fun slackApp(
                         triggerId = req.payload.triggerId
                     )
                     try {
-                        val botReply = replier(null)
+                        val botReply = cb()
                         MessageSender(conversations, AsyncSlackClient(ctx.asyncClient()))
                             .sendReply(botReply, convCtx)
                     } finally {
@@ -72,56 +78,40 @@ fun slackApp(
 
     blockAction(".*".toPattern()) { req, ctx ->
         GlobalScope.launch {
-            val convKey = ConversationKey(
-                channel = Channel(req.payload.channel.id),
-                messageTs = req.payload.message.ts
-            )
-            val convCtx = conversations.find(convKey) ?: return@launch
-            val action = req.payload.actions.first() ?: return@launch
-            val value = if (action.selectedOption != null) {
-                action.selectedOption.value
-            } else {
-                action.text.text
-            }
-            val interactionKey = InteractionKey(
-                elementId = action.actionId,
-                value = value
-            )
-            val interaction = convCtx.find(interactionKey) ?: return@launch
-            interaction.conversation.triggerId = req.payload.triggerId
-            if (convCtx.messageTsToDelete != null) {
-                val delRes = ctx.client().chatDelete {
-                    it.channel(convCtx.channel.id)
-                    it.ts(convCtx.messageTsToDelete)
-                }
-                convCtx.messageTsToDelete = null
-                println(delRes)
-            }
-
             try {
-                val validator = interaction.validator
-                val inter = Interaction(
-                    value = value,
-                    channel = convCtx.channel,
-                    actor = User(req.payload.user.id),
-                    timestamp = Instant.now(clock)
-                )
-                val errors = validator?.validator?.invoke(inter) ?: listOf()
-                if (errors.isNotEmpty()) {
-                    MessageSender(conversations, AsyncSlackClient(ctx.asyncClient()))
-                        .sendErrors(errors, convCtx)
-                } else {
-                    val botReply = interaction.replier.replier(inter)
-                    MessageSender(conversations, AsyncSlackClient(ctx.asyncClient()))
-                        .sendReply(botReply, convCtx)
+                val event = req.mapToEvent(clock) ?: return@launch
+                val convKey = req.mapToConversationKey()
+                val conv = conversations.find(convKey) ?: return@launch
+                val interKey = req.mapToInteractionKey() ?: return@launch
+                if (conv.messageTsToDelete != null) {
+                    val delRes = ctx.client().chatDelete {
+                        it.channel(conv.channel.id)
+                        it.ts(conv.messageTsToDelete)
+                    }
+                    conv.messageTsToDelete = null
+                    println(delRes)
                 }
-            } finally {
-                interaction.conversation.triggerId = null
+                conv.triggerId = req.payload.triggerId
+                try {
+                    val errors = conv.validate(event, interKey)
+                    if (errors != null && errors.isNotEmpty()) {
+                        MessageSender(conversations, AsyncSlackClient(ctx.asyncClient()))
+                            .sendErrors(errors, conv)
+                        return@launch
+                    }
+                    val reply = conv.renderReply(event, interKey)
+                    if (reply != null) {
+                        MessageSender(conversations, AsyncSlackClient(ctx.asyncClient()))
+                            .sendReply(reply, conv)
+                    }
+                } finally {
+                    conv.triggerId = null
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
         ctx.ack()
     }
 
 }
-
-fun <T> Replier<T>.curry(t: T) = VoidReplier { this.replier(t) }

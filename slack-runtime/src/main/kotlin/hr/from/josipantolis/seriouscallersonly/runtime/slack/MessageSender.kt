@@ -53,7 +53,7 @@ class MessageSender(
     }
 
     suspend fun sendErrors(errors: Errors, conv: Conversation) {
-        val errorTxt = errors.joinToString(
+        val errorTxt = errors.errs.joinToString(
             separator = "\n:warning: ",
             prefix = ":warning: "
         )
@@ -116,6 +116,6 @@ class MessageSender(
     }
 
     private suspend fun sendChainedReply(chainableReply: ChainableReply, conv: Conversation) {
-        chainableReply.andThen?.also { sendReply(it.replier(null), conv) }
+        chainableReply.andThen?.also { sendReply(it.cb(), conv) }
     }
 }

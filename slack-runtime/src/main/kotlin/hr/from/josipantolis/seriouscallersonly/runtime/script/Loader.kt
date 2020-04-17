@@ -59,6 +59,9 @@ class Loader(
 private class BotBuilder(override val env: Properties) : ScoScriptCtx {
     private val channelProtocols = mutableMapOf<Channel, ChannelProtocol>()
     private val commandProtocols = mutableMapOf<Command, CommandProtocol>()
+    private var onPrivateMessage: EventReplier.PrivateMessageReceivedReplier? = null
+    private var onHomeTabVisit: EventReplier.HomeTabVisitedReplier? = null
+    private var onBotJoinChannel: EventReplier.BotJoinedChannelReplier? = null
 
     override fun register(channelProtocol: ChannelProtocol) {
         channelProtocols[channelProtocol.channel] = channelProtocol
@@ -68,8 +71,23 @@ private class BotBuilder(override val env: Properties) : ScoScriptCtx {
         commandProtocols[commandProtocol.command] = commandProtocol
     }
 
+    override fun register(privateMessageReplier: EventReplier.PrivateMessageReceivedReplier) {
+        onPrivateMessage = privateMessageReplier
+    }
+
+    override fun register(homeTabVisitReplier: EventReplier.HomeTabVisitedReplier) {
+        onHomeTabVisit = homeTabVisitReplier
+    }
+
+    override fun register(botJoinedChannelReplier: EventReplier.BotJoinedChannelReplier) {
+        onBotJoinChannel = botJoinedChannelReplier
+    }
+
     fun buildBot() = Bot(
         channelProtocols = channelProtocols,
-        commandProtocols = commandProtocols
+        commandProtocols = commandProtocols,
+        onPrivateMessage = onPrivateMessage,
+        onHomeTabVisit = onHomeTabVisit,
+        onBotJoinChannel = onBotJoinChannel
     )
 }

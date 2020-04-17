@@ -3,7 +3,7 @@ server:
 management:
   server.port: 3001
   endpoints:
-    web.exposure.include: helth,info,prometheus,loggers,env,bot
+    web.exposure.include: health,info,prometheus,loggers,env,bot
     endpoint:
       health.show-details: always
 spring.jmx.enabled: false

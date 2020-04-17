@@ -1,14 +1,20 @@
+import hr.from.josipantolis.seriouscallersonly.api.Errors
+import hr.from.josipantolis.seriouscallersonly.api.Event.Interaction.ButtonClicked
+import hr.from.josipantolis.seriouscallersonly.api.EventReplier.CommandInvokedReplier
+import hr.from.josipantolis.seriouscallersonly.api.EventReplier.InteractionReplier.ButtonClickedReplier
+import hr.from.josipantolis.seriouscallersonly.api.EventReplier.InteractionReplier.OptionPickedReplier
+
 register(
     CommandProtocol(command = Command("/play"),
-        onSlashCommand = Replier {
-            val txt = (it.text ?: "").toLowerCase().replace("\\s".toRegex(), "")
+        onCommandInvoked = CommandInvokedReplier {
+            val txt = it.invocationText.toLowerCase().replace("\\s".toRegex(), "")
             if (txt.contains("tictactoe")) {
-                return@Replier TicTacToeGame().renderBoard()
+                return@CommandInvokedReplier TicTacToeGame().renderBoard()
             }
             if (txt.contains("guess")) {
-                return@Replier GuessingGame((1..10)).render()
+                return@CommandInvokedReplier GuessingGame((1..10)).render()
             }
-            return@Replier gameMenu()
+            return@CommandInvokedReplier gameMenu()
         })
 )
 
@@ -19,11 +25,11 @@ fun gameMenu(): Reply.Message {
         Block.Actions(elements = listOf(
             Element.Button(
                 text = Element.Text.Plain("Tic Tac Toe"),
-                onClick = Replier { interaction ->
+                onClick = ButtonClickedReplier { event ->
                     Reply.ReplacementMessage(
                         blocks = listOf(
                             gamePrompt,
-                            Block.Section(Element.Text.Markdown("${interaction.actor.mention} picked Tic Tac Toe!"))
+                            Block.Section(Element.Text.Markdown("${event.clickedBy.mention} picked Tic Tac Toe!"))
                         ),
                         andThen = Replier {
                             TicTacToeGame().renderBoard()
@@ -33,11 +39,11 @@ fun gameMenu(): Reply.Message {
             ),
             Element.Button(
                 text = Element.Text.Plain("Guessing game"),
-                onClick = Replier { interaction ->
+                onClick = ButtonClickedReplier { event ->
                     Reply.ReplacementMessage(
                         blocks = listOf(
                             gamePrompt,
-                            Block.Section(Element.Text.Markdown("${interaction.actor.mention} picked Guessing game!"))
+                            Block.Section(Element.Text.Markdown("${event.clickedBy.mention} picked Guessing game!"))
                         ),
                         andThen = Replier {
                             GuessingGame((1..10)).render()
@@ -67,13 +73,13 @@ inner class GuessingGame(range: IntRange) {
     private fun toOption(guess: Int): Option {
         return Option(
             text = Element.Text.Plain("$guess"),
-            onSelect = Replier {
+            onPick = OptionPickedReplier {
                 if (guess == answer) {
                     Reply.Message(blocks = listOf(Block.Section(
                         text = Element.Text.Plain("Correct!!! :tada: :confetti_ball: :tada:"),
                         accessory = Element.Button(
                             text = Element.Text.Plain("Play another game!"),
-                            onClick = Replier { gameMenu() }
+                            onClick = ButtonClickedReplier { gameMenu() }
                         )
                     )))
                 } else {
@@ -103,11 +109,11 @@ inner class GuessingGame(range: IntRange) {
 enum class Cell(
     val text: String,
     val style: ButtonStyle,
-    val validator: ((Interaction) -> List<String>)?
+    val validator: ((ButtonClicked) -> Errors)?
 ) {
     EMPTY("_", ButtonStyle.DEFAULT, null),
-    O("O", ButtonStyle.PRIMARY, { listOf(ERR.MSG) }),
-    X("X", ButtonStyle.DANGER, { listOf(ERR.MSG) });
+    O("O", ButtonStyle.PRIMARY, { Errors(listOf(ERR.MSG)) }),
+    X("X", ButtonStyle.DANGER, { Errors(listOf(ERR.MSG)) });
 
     object ERR {
         const val MSG = "This cell is already selected. Pick another one!"
@@ -124,7 +130,7 @@ inner class TicTacToeGame {
 
     fun renderBoard(): Reply.Message = Reply.Message(blocks = renderBlocks())
 
-    private fun reRenderBoard(andThen: Replier<Void?>? = null): Reply = Reply.ReplacementMessage(
+    private fun reRenderBoard(andThen: Replier? = null): Reply = Reply.ReplacementMessage(
         blocks = renderBlocks(),
         andThen = andThen
     )
@@ -146,16 +152,16 @@ inner class TicTacToeGame {
             ),
             style = style,
             validate = validator?.let { Validator(it) },
-            onClick = Replier {
+            onClick = ButtonClickedReplier {
                 board[xy] = Cell.O
                 reDetectWinningLine()
                 if (winningLine.isNotEmpty()) {
-                    return@Replier reRenderBoard(Replier { renderVictoryMsg() })
+                    return@ButtonClickedReplier reRenderBoard(Replier { renderVictoryMsg() })
                 }
                 makeBotTurn()
                 reDetectWinningLine()
                 if (winningLine.isNotEmpty()) {
-                    return@Replier reRenderBoard(Replier { renderVictoryMsg() })
+                    return@ButtonClickedReplier reRenderBoard(Replier { renderVictoryMsg() })
                 }
                 reRenderBoard()
             }
@@ -172,7 +178,7 @@ inner class TicTacToeGame {
             ),
             accessory = Element.Button(
                 text = Element.Text.Plain("Play another game!"),
-                onClick = Replier { gameMenu() }
+                onClick = ButtonClickedReplier { gameMenu() }
             )
         )
     ))

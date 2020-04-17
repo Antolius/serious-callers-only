@@ -14,8 +14,22 @@ import com.slack.api.model.block.element.StaticSelectElement
 import hr.from.josipantolis.seriouscallersonly.api.*
 import java.util.*
 
+enum class InteractionType {
+    BUTTON,
+    OPTION,
+    TEXT_INPUT,
+    RESPONSE,
+    UNKNOWN;
+
+    fun generateId() = "$name-${UUID.randomUUID()}"
+
+    companion object {
+        fun fromId(id: String) = values().find { id.startsWith(it.name) } ?: UNKNOWN
+    }
+}
+
 suspend fun Conversation.mapToPublicMessage(message: Reply.Message): ChatPostMessageRequest {
-    clear()
+    clearLiveInteractions()
     return ChatPostMessageRequest.builder()
         .channel(channel.id)
         .threadTs(thread?.id)
@@ -24,7 +38,7 @@ suspend fun Conversation.mapToPublicMessage(message: Reply.Message): ChatPostMes
 }
 
 suspend fun Conversation.mapToEphemeralMessage(message: Reply.Message, user: User): ChatPostEphemeralRequest {
-    clear()
+    clearLiveInteractions()
     return ChatPostEphemeralRequest.builder()
         .channel(channel.id)
         .threadTs(thread?.id)
@@ -34,7 +48,7 @@ suspend fun Conversation.mapToEphemeralMessage(message: Reply.Message, user: Use
 }
 
 suspend fun Conversation.mapToUpdateMessage(message: Reply.ReplacementMessage, tsToUpdate: String): ChatUpdateRequest {
-    clear()
+    clearLiveInteractions()
     return ChatUpdateRequest.builder()
         .channel(channel.id)
         .ts(tsToUpdate)
@@ -127,51 +141,53 @@ private suspend fun Element.Image.toSlackElement(@Suppress("UNUSED_PARAMETER") c
         .build()
 
 private suspend fun Element.Button.toSlackElement(ctx: Conversation): ButtonElement {
-    val elementId = UUID.randomUUID().toString()
+    val actionId = InteractionType.BUTTON.generateId()
+    val valueId = InteractionType.BUTTON.generateId()
     ctx.store(
         LiveInteraction(
-            key = InteractionKey(elementId = elementId, value = text.text),
+            key = InteractionKey(actionId = actionId, valueId = valueId),
             replier = onClick,
             validator = validate
         )
     )
     return ButtonElement.builder()
-        .actionId(elementId)
+        .actionId(actionId)
+        .value(valueId)
         .text(text.toSlackElement(ctx))
         .style(style.style)
         .build()
 }
 
 private suspend fun Element.Select.toSlackElement(ctx: Conversation): StaticSelectElement {
-    val elementId = UUID.randomUUID().toString()
+    val actionId = InteractionType.OPTION.generateId()
     return StaticSelectElement.builder()
-        .actionId(elementId)
+        .actionId(actionId)
         .placeholder(placeholder.toSlackElement(ctx))
-        .options(options.map { it.toSlackOption(ctx, elementId) })
+        .options(options.map { it.toSlackOption(ctx, actionId) })
         .build()
 }
 
 private suspend fun Element.Overflow.toSlackElement(ctx: Conversation): OverflowMenuElement {
-    val elementId = UUID.randomUUID().toString()
+    val actionId = InteractionType.OPTION.generateId()
     return OverflowMenuElement.builder()
-        .actionId(elementId)
-        .options(options.map { it.toSlackOption(ctx, elementId) })
+        .actionId(actionId)
+        .options(options.map { it.toSlackOption(ctx, actionId) })
         .build()
 }
 
 private suspend fun Option.toSlackOption(
     ctx: Conversation,
-    elementId: String
+    actionId: String
 ): OptionObject {
-    val value = UUID.randomUUID().toString()
+    val valueId = UUID.randomUUID().toString()
     ctx.store(
         LiveInteraction(
-            key = InteractionKey(elementId = elementId, value = value),
-            replier = onSelect
+            key = InteractionKey(actionId = actionId, valueId = valueId),
+            replier = onPick
         )
     )
     return OptionObject.builder()
-        .value(value)
+        .value(valueId)
         .text(text.toSlackElement(ctx))
         .description(description?.toSlackElement(ctx))
         .build()
