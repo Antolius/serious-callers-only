@@ -10,9 +10,6 @@ import com.slack.api.methods.response.chat.ChatUpdateResponse
 import com.slack.api.model.block.Blocks
 import com.slack.api.model.block.SectionBlock
 import com.slack.api.model.block.composition.PlainTextObject
-import hr.from.josipantolidsls.seriouscallersonly.bot.mapToEphemeralMessage
-import hr.from.josipantolidsls.seriouscallersonly.bot.mapToPublicMessage
-import hr.from.josipantolidsls.seriouscallersonly.bot.mapToUpdateMessage
 import hr.from.josipantolis.seriouscallersonly.api.ChainableReply
 import hr.from.josipantolis.seriouscallersonly.api.Errors
 import hr.from.josipantolis.seriouscallersonly.api.Reply

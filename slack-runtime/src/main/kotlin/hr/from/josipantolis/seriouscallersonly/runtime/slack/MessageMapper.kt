@@ -1,4 +1,4 @@
-package hr.from.josipantolidsls.seriouscallersonly.bot
+package hr.from.josipantolis.seriouscallersonly.runtime.slack
 
 import com.slack.api.methods.request.chat.ChatPostEphemeralRequest
 import com.slack.api.methods.request.chat.ChatPostMessageRequest
@@ -12,9 +12,6 @@ import com.slack.api.model.block.element.ImageElement
 import com.slack.api.model.block.element.OverflowMenuElement
 import com.slack.api.model.block.element.StaticSelectElement
 import hr.from.josipantolis.seriouscallersonly.api.*
-import hr.from.josipantolis.seriouscallersonly.runtime.slack.Conversation
-import hr.from.josipantolis.seriouscallersonly.runtime.slack.InteractionKey
-import hr.from.josipantolis.seriouscallersonly.runtime.slack.LiveInteraction
 import java.util.*
 
 suspend fun Conversation.mapToPublicMessage(message: Reply.Message): ChatPostMessageRequest {
@@ -69,7 +66,7 @@ private suspend fun Block.Image.toSlackBlock(ctx: Conversation) =
         .title(title?.toSlackElement(ctx))
         .build()
 
-private suspend fun Block.Divider.toSlackBlock(ctx: Conversation) = DividerBlock()
+private suspend fun Block.Divider.toSlackBlock(@Suppress("UNUSED_PARAMETER") ctx: Conversation) = DividerBlock()
 
 private suspend fun Block.Context.toSlackBlock(ctx: Conversation) =
     ContextBlock.builder()
@@ -111,19 +108,19 @@ private suspend fun Element.Text.toSlackElement(ctx: Conversation) =
         is Element.Text.Markdown -> this.toSlackElement(ctx)
     }
 
-private suspend fun Element.Text.Plain.toSlackElement(ctx: Conversation) =
+private suspend fun Element.Text.Plain.toSlackElement(@Suppress("UNUSED_PARAMETER") ctx: Conversation) =
     PlainTextObject.builder()
         .text(text)
         .emoji(emoji)
         .build()
 
-private suspend fun Element.Text.Markdown.toSlackElement(ctx: Conversation) =
+private suspend fun Element.Text.Markdown.toSlackElement(@Suppress("UNUSED_PARAMETER") ctx: Conversation) =
     MarkdownTextObject.builder()
         .text(text)
         .verbatim(verbatim)
         .build()
 
-private suspend fun Element.Image.toSlackElement(ctx: Conversation) =
+private suspend fun Element.Image.toSlackElement(@Suppress("UNUSED_PARAMETER") ctx: Conversation) =
     ImageElement.builder()
         .imageUrl(url.toExternalForm())
         .altText(altText)
