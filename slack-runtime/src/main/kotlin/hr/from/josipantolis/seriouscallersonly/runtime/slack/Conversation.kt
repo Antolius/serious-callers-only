@@ -2,9 +2,9 @@ package hr.from.josipantolis.seriouscallersonly.runtime.slack
 
 import hr.from.josipantolis.seriouscallersonly.api.*
 import hr.from.josipantolis.seriouscallersonly.api.Event.Interaction.*
-import hr.from.josipantolis.seriouscallersonly.runtime.slack.repository.ConcurrentRepo
-import hr.from.josipantolis.seriouscallersonly.runtime.slack.repository.MapRepo
-import hr.from.josipantolis.seriouscallersonly.runtime.slack.repository.Repo
+import hr.from.josipantolis.seriouscallersonly.runtime.repository.ConcurrentRepo
+import hr.from.josipantolis.seriouscallersonly.runtime.repository.MapRepo
+import hr.from.josipantolis.seriouscallersonly.runtime.repository.Repo
 
 data class InteractionKey(
     val actionId: String,

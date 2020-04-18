@@ -4,8 +4,8 @@ import com.slack.api.bolt.App
 import com.slack.api.bolt.AppConfig
 import com.slack.api.model.event.MemberJoinedChannelEvent
 import hr.from.josipantolis.seriouscallersonly.api.*
-import hr.from.josipantolis.seriouscallersonly.runtime.slack.repository.ConcurrentRepo
-import hr.from.josipantolis.seriouscallersonly.runtime.slack.repository.MapRepo
+import hr.from.josipantolis.seriouscallersonly.runtime.repository.ConcurrentRepo
+import hr.from.josipantolis.seriouscallersonly.runtime.repository.MapRepo
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.future.await
 import kotlinx.coroutines.launch

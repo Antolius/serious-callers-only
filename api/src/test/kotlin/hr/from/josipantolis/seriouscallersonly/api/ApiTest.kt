@@ -4,43 +4,10 @@ import hr.from.josipantolis.seriouscallersonly.api.EventReplier.InteractionRepli
 import hr.from.josipantolis.seriouscallersonly.api.EventReplier.PublicMessagePostedReplier
 import org.junit.jupiter.api.Test
 
-class DslTest {
+class ApiTest {
 
     @Test
-    fun `Should allow for interactive conversations`() {
-//        onNewChannelMessage { message ->
-//            replyMessage {
-//                += section {
-//                    text = plainText("What's your favorite digit?")
-//                    accessory = select {
-//                        placeholder = plainText("Pick one!")
-//                        options = (0..9).map { digit -> option {
-//                            text = plainText("$digit")
-//                            onSelect = {
-//                                replyMessage {
-//                                    += section {
-//                                        text = plainText("What's your favorite letter?")
-//                                        accessory = select {
-//                                            placeholder = plainText("Pick one!")
-//                                            options = ('a'..'z').map { letter -> option {
-//                                                text = plainText("$digit")
-//                                                onSelect = {
-//                                                    replyMessage {
-//                                                        += section {
-//                                                            text = plainText("You picked $digit & $letter")
-//                                                        }
-//                                                    }
-//                                                }
-//                                            }}
-//                                        }
-//                                    }
-//                                }
-//                            }
-//                        }}
-//                    }
-//                }
-//            }
-//        }
+    fun `Should be able to build bot directly using API models`() {
         Bot(
             channelProtocols = mapOf(
                 Channel("made-up") to ChannelProtocol(

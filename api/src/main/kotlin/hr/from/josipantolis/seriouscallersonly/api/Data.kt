@@ -15,7 +15,10 @@ data class User(
 
 data class Channel(
     val id: String
-)
+) {
+    val mention: String
+        get() = "<#$id>"
+}
 
 data class Thread(
     val id: String

@@ -1,4 +1,4 @@
-package hr.from.josipantolis.seriouscallersonly.runtime.slack.repository
+package hr.from.josipantolis.seriouscallersonly.runtime.repository
 
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock

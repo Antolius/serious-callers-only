@@ -14,7 +14,7 @@ import hr.from.josipantolis.seriouscallersonly.api.ChainableReply
 import hr.from.josipantolis.seriouscallersonly.api.Errors
 import hr.from.josipantolis.seriouscallersonly.api.Reply
 import hr.from.josipantolis.seriouscallersonly.api.Visibility
-import hr.from.josipantolis.seriouscallersonly.runtime.slack.repository.Repo
+import hr.from.josipantolis.seriouscallersonly.runtime.repository.Repo
 import kotlinx.coroutines.future.await
 
 class AsyncSlackClient(private val delegate: AsyncMethodsClient) : SlackClient {

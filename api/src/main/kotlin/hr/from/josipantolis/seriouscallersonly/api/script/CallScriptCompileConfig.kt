@@ -4,10 +4,10 @@ import kotlin.script.experimental.api.*
 import kotlin.script.experimental.jvm.dependenciesFromClassContext
 import kotlin.script.experimental.jvm.jvm
 
-internal object ScoCompilationConfig : ScriptCompilationConfiguration({
+internal object CallScriptCompileConfig : ScriptCompilationConfiguration({
     jvm {
         dependenciesFromClassContext(
-            ScoScript::class,
+            CallScript::class,
             "api",
             "kotlin-stdlib"
         )

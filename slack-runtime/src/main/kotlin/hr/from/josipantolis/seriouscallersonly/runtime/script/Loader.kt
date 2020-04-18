@@ -1,8 +1,9 @@
 package hr.from.josipantolis.seriouscallersonly.runtime.script
 
 import hr.from.josipantolis.seriouscallersonly.api.*
-import hr.from.josipantolis.seriouscallersonly.api.script.ScoScript
-import hr.from.josipantolis.seriouscallersonly.api.script.ScoScriptCtx
+import hr.from.josipantolis.seriouscallersonly.api.dsl.CallScriptExtensionsRoot
+import hr.from.josipantolis.seriouscallersonly.api.script.CallScript
+import hr.from.josipantolis.seriouscallersonly.api.script.CallScriptCtx
 import java.io.File
 import java.nio.charset.StandardCharsets
 import java.util.*
@@ -22,17 +23,17 @@ class Loader(
     fun load(scriptsDir: File) = scriptsDir.walkBottomUp()
         .onEnter { it.canRead() }
         .filter { it.isFile }
-        .filter { it.name.endsWith(".${ScoScriptCtx.FILE_EXTENSION}") }
+        .filter { it.name.endsWith(".${CallScriptCtx.FILE_EXTENSION}") }
         .map { it.readText(StandardCharsets.UTF_8) }
         .map { it.toScriptSource() }
         .fold(BotBuilder(env), this::runScript)
         .buildBot()
 
     private fun runScript(builder: BotBuilder, script: SourceCode): BotBuilder {
-        val reports = host.evalWithTemplate<ScoScript>(
+        val reports = host.evalWithTemplate<CallScript>(
             script = script,
             evaluation = {
-                constructorArgs(builder)
+                constructorArgs(builder, CallScriptExtensionsRoot())
             }
         ).reports
         checkForErrors(reports)
@@ -56,7 +57,7 @@ class Loader(
 
 }
 
-private class BotBuilder(override val env: Properties) : ScoScriptCtx {
+private class BotBuilder(override val env: Properties) : CallScriptCtx {
     private val channelProtocols = mutableMapOf<Channel, ChannelProtocol>()
     private val commandProtocols = mutableMapOf<Command, CommandProtocol>()
     private var onPrivateMessage: EventReplier.PrivateMessageReceivedReplier? = null

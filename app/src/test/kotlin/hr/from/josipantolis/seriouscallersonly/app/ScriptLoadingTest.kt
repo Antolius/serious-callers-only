@@ -28,7 +28,23 @@ class ScriptLoadingTest(
 
         // then
         then(actualRes.statusCode).isEqualTo(HttpStatus.OK)
-        then(actualRes.body).isEqualTo("""{"channelProtocols":{},"commandProtocols":["/play"],"onBotJoinChannel":false,"onHomeTabVisit":false,"onPrivateMessage":false}""")
+        then(actualRes.body).isEqualTo(
+            """{
+                |"channelProtocols":{
+                    |"Channel(id=channel-id)":{
+                        |"onUserJoined":true,
+                        |"onPublicMessage":true,
+                        |"timerProtocol":"* 0/5 * * * *"
+                    |}
+                |}
+                |,"commandProtocols":[
+                    |"/whoami"
+                |],
+                |"onBotJoinChannel":true,
+                |"onHomeTabVisit":true,
+                |"onPrivateMessage":true
+            |}""".trimMargin().replace("\\n".toRegex(), "")
+        )
     }
 
 }
