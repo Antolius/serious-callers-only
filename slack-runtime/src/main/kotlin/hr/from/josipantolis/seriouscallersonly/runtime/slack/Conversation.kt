@@ -27,8 +27,8 @@ data class ConversationKey(
 private typealias InteractionRepo<I> = Repo<InteractionKey, LiveInteraction<I>>
 
 class Conversation(
-    val user: User,
     val channel: Channel,
+    val user: User? = null,
     val thread: Thread? = null,
     var triggerId: String? = null,
     var updateableMessageTs: String? = null,

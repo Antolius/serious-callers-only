@@ -7,7 +7,9 @@ import hr.from.josipantolis.seriouscallersonly.api.*
 import hr.from.josipantolis.seriouscallersonly.runtime.slack.repository.ConcurrentRepo
 import hr.from.josipantolis.seriouscallersonly.runtime.slack.repository.MapRepo
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.future.await
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.time.Clock
 import java.time.Instant
 
@@ -15,9 +17,30 @@ val conversations = ConcurrentRepo<ConversationKey?, Conversation>(MapRepo { it.
 
 fun slackApp(
     bot: Bot,
+    scheduler: Scheduler,
     config: AppConfig = AppConfig(),
     clock: Clock = Clock.systemUTC()
 ) = App(config).apply {
+
+    val slackMethods = config.slack.methodsAsync(config.singleTeamBotToken)
+    bot.channelProtocols
+        .filter { (_, proto) -> proto.timerProtocol != null }
+        .map { (ch, proto) -> ch to proto.timerProtocol }
+        .forEach { (ch, proto) ->
+            scheduler.schedule(proto!!.cron, Runnable {
+                runBlocking {
+                    val conv = Conversation(channel = ch)
+                    val reply = proto.onTimer.cb(Event.Timer(ch, clock.instant()))
+                    if (reply is Reply.Message) {
+                        val req = conv.mapToPublicMessage(reply)
+                        val res = slackMethods.chatPostMessage(req).await()
+                        if (!res.isOk) {
+                            throw Exception(res.error)
+                        }
+                    }
+                }
+            })
+        }
 
     event(MemberJoinedChannelEvent::class.java) { payload, ctx ->
         val user = User(payload.event.user)

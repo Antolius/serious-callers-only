@@ -21,6 +21,7 @@ internal object ScoCompilationConfig : ScriptCompilationConfiguration({
         hr.from.josipantolis.seriouscallersonly.api.Bot::class,
         hr.from.josipantolis.seriouscallersonly.api.ChannelProtocol::class,
         hr.from.josipantolis.seriouscallersonly.api.CommandProtocol::class,
+        hr.from.josipantolis.seriouscallersonly.api.TimerProtocol::class,
         hr.from.josipantolis.seriouscallersonly.api.Event::class,
         hr.from.josipantolis.seriouscallersonly.api.ChainableReply::class,
         hr.from.josipantolis.seriouscallersonly.api.Reply::class,
