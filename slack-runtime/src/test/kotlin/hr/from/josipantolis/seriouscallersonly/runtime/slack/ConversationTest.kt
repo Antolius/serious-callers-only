@@ -293,7 +293,6 @@ internal class ConversationTest {
     private fun givenKey() = InteractionKey("id", "id")
 
     private fun givenConv() = Conversation(
-        user = User("user"),
         channel = Channel("channel")
     )
 

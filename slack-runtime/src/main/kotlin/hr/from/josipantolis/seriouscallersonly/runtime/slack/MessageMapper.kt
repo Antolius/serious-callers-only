@@ -28,27 +28,23 @@ enum class InteractionType {
     }
 }
 
-suspend fun Conversation.mapToPublicMessage(message: Reply.Message): ChatPostMessageRequest {
-    clearLiveInteractions()
-    return ChatPostMessageRequest.builder()
+suspend fun Conversation.mapToPublicMessage(message: Reply.Message): ChatPostMessageRequest =
+    ChatPostMessageRequest.builder()
         .channel(channel.id)
         .threadTs(thread?.id)
         .blocks(message.blocks.mapNotNull { it.toSlackBlock(this) })
         .build()
-}
 
-suspend fun Conversation.mapToEphemeralMessage(message: Reply.Message, user: User): ChatPostEphemeralRequest {
-    clearLiveInteractions()
-    return ChatPostEphemeralRequest.builder()
+suspend fun Conversation.mapToEphemeralMessage(message: Reply.Message, user: User): ChatPostEphemeralRequest =
+    ChatPostEphemeralRequest.builder()
         .channel(channel.id)
         .threadTs(thread?.id)
         .user(user.id)
         .blocks(message.blocks.mapNotNull { it.toSlackBlock(this) })
         .build()
-}
 
 suspend fun Conversation.mapToUpdateMessage(message: Reply.ReplacementMessage, tsToUpdate: String): ChatUpdateRequest {
-    clearLiveInteractions()
+    clearAllLiveInteractions()
     return ChatUpdateRequest.builder()
         .channel(channel.id)
         .ts(tsToUpdate)

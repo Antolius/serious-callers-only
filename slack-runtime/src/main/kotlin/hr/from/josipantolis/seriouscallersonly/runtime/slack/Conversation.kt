@@ -2,9 +2,9 @@ package hr.from.josipantolis.seriouscallersonly.runtime.slack
 
 import hr.from.josipantolis.seriouscallersonly.api.*
 import hr.from.josipantolis.seriouscallersonly.api.Event.Interaction.*
-import hr.from.josipantolis.seriouscallersonly.runtime.repository.ConcurrentRepo
-import hr.from.josipantolis.seriouscallersonly.runtime.repository.MapRepo
-import hr.from.josipantolis.seriouscallersonly.runtime.repository.Repo
+import hr.from.josipantolis.seriouscallersonly.runtime.repo.MapRepo
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 data class InteractionKey(
     val actionId: String,
@@ -24,24 +24,23 @@ data class ConversationKey(
     val messageTs: String
 )
 
-private typealias InteractionRepo<I> = Repo<InteractionKey, LiveInteraction<I>>
-
 class Conversation(
     val channel: Channel,
-    val user: User? = null,
     val thread: Thread? = null,
     var triggerId: String? = null,
     var updateableMessageTs: String? = null,
-    var messageTsToDelete: String? = null
+    var messageTsToDelete: String? = null,
+    var responseReplier: EventReplier.InteractionReplier.UserRespondedReplier? = null
 ) {
+    private val mtx = Mutex()
 
     var key: ConversationKey? = null
-    val buttonInteractions = ConcurrentRepo<InteractionKey, LiveInteraction<ButtonClicked>>(MapRepo { it.key })
-    val optionInteractions = ConcurrentRepo<InteractionKey, LiveInteraction<OptionPicked>>(MapRepo { it.key })
-    val inputInteractions = ConcurrentRepo<InteractionKey, LiveInteraction<TextInput>>(MapRepo { it.key })
-    val responseInteractions = ConcurrentRepo<InteractionKey, LiveInteraction<UserResponded>>(MapRepo { it.key })
+    val buttonInteractions = MapRepo<InteractionKey, LiveInteraction<ButtonClicked>> { it.key }
+    val optionInteractions = MapRepo<InteractionKey, LiveInteraction<OptionPicked>> { it.key }
+    val inputInteractions = MapRepo<InteractionKey, LiveInteraction<TextInput>> { it.key }
+    val responseInteractions = MapRepo<InteractionKey, LiveInteraction<UserResponded>> { it.key }
 
-    suspend fun <I : Event.Interaction> validate(interaction: I, key: InteractionKey): Errors? =
+    suspend fun <I : Event.Interaction> validate(interaction: I, key: InteractionKey): Errors? = mtx.withLock {
         when (interaction) {
             is ButtonClicked -> buttonInteractions.find(key)?.validator?.check?.invoke(interaction)
             is OptionPicked -> optionInteractions.find(key)?.validator?.check?.invoke(interaction)
@@ -49,8 +48,9 @@ class Conversation(
             is UserResponded -> responseInteractions.find(key)?.validator?.check?.invoke(interaction)
             else -> null
         }
+    }
 
-    suspend fun <I : Event.Interaction> renderReply(interaction: I, key: InteractionKey): Reply? =
+    suspend fun <I : Event.Interaction> renderReply(interaction: I, key: InteractionKey): Reply? = mtx.withLock {
         when (interaction) {
             is ButtonClicked -> buttonInteractions.find(key)?.replier?.cb?.invoke(interaction)
             is OptionPicked -> optionInteractions.find(key)?.replier?.cb?.invoke(interaction)
@@ -58,6 +58,7 @@ class Conversation(
             is UserResponded -> responseInteractions.find(key)?.replier?.cb?.invoke(interaction)
             else -> null
         }
+    }
 
     suspend inline fun <reified I : Event.Interaction> store(liveInteraction: LiveInteraction<I>) {
         liveInteraction.conversation = this
@@ -69,11 +70,38 @@ class Conversation(
         }
     }
 
-    suspend fun clearLiveInteractions() {
+    suspend fun clearLiveInteractionsFor(actionId: String) = mtx.withLock {
+        buttonInteractions.all()
+            .map { (key, _) -> key }
+            .filter { it.actionId == actionId }
+            .forEach { buttonInteractions.remove(it) }
+        optionInteractions.all()
+            .map { (key, _) -> key }
+            .filter { it.actionId == actionId }
+            .forEach { optionInteractions.remove(it) }
+        inputInteractions.all()
+            .map { (key, _) -> key }
+            .filter { it.actionId == actionId }
+            .forEach { inputInteractions.remove(it) }
+        responseInteractions.all()
+            .map { (key, _) -> key }
+            .filter { it.actionId == actionId }
+            .forEach { responseInteractions.remove(it) }
+    }
+
+    suspend fun clearAllLiveInteractions() = mtx.withLock {
         buttonInteractions.clear()
         optionInteractions.clear()
         inputInteractions.clear()
         responseInteractions.clear()
+    }
+
+    suspend fun isCompleted() = mtx.withLock {
+        responseReplier == null
+                && buttonInteractions.isEmpty()
+                && optionInteractions.isEmpty()
+                && inputInteractions.isEmpty()
+                && responseInteractions.isEmpty()
     }
 
 }

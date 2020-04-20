@@ -10,11 +10,11 @@ import com.slack.api.methods.response.chat.ChatUpdateResponse
 import com.slack.api.model.block.Blocks
 import com.slack.api.model.block.SectionBlock
 import com.slack.api.model.block.composition.PlainTextObject
-import hr.from.josipantolis.seriouscallersonly.api.ChainableReply
 import hr.from.josipantolis.seriouscallersonly.api.Errors
 import hr.from.josipantolis.seriouscallersonly.api.Reply
+import hr.from.josipantolis.seriouscallersonly.api.User
 import hr.from.josipantolis.seriouscallersonly.api.Visibility
-import hr.from.josipantolis.seriouscallersonly.runtime.repository.Repo
+import hr.from.josipantolis.seriouscallersonly.runtime.repo.Repo
 import kotlinx.coroutines.future.await
 
 class AsyncSlackClient(private val delegate: AsyncMethodsClient) : SlackClient {
@@ -35,31 +35,91 @@ interface SlackClient {
 }
 
 class MessageSender(
-    private val convRepo: Repo<ConversationKey?, Conversation>,
+    private val conversations: Repo<ConversationKey, Conversation>,
     private val client: SlackClient
 ) {
-    suspend fun sendReply(reply: Reply, conv: Conversation) {
-        clearPreExistingConversations(conv)
+    suspend fun sendReply(reply: Reply, conversation: Conversation) {
         when (reply) {
-            is Reply.Message -> {
-                when (val visibleTo = reply.visibleTo) {
-                    is Visibility.Ephemeral -> sendEphemeralMessage(reply, visibleTo, conv)
-                    Visibility.Public -> sendPublicMessage(reply, conv)
-                }
-                sendChainedReply(reply, conv)
-            }
-            is Reply.ReplacementMessage -> updatePreviouslySentMessage(reply, conv)
+            is Reply.Message -> sendNewMessage(reply, conversation)
+            is Reply.ReplacementMessage -> updatePreviouslySentMessage(reply, conversation)
+        }
+        cleanup(conversation)
+    }
+
+    suspend fun sendErrors(errors: Errors, conversation: Conversation) {
+        val slackMsg = buildSlackErrorMsg(errors, conversation)
+        val slackResp = client.chatPostMessage(slackMsg)
+        if (!slackResp.isOk) {
+            throw Exception(slackResp.error)
+        }
+        conversation.messageTsToDelete = slackResp.ts
+    }
+
+    private suspend fun sendNewMessage(reply: Reply.Message, conversation: Conversation) {
+        when (val visibleTo = reply.visibleTo) {
+            is Visibility.Ephemeral -> sendEphemeralMessage(reply, visibleTo.user, conversation)
+            Visibility.Public -> sendPublicMessage(reply, conversation)
+        }
+        conversation.responseReplier = reply.onReply
+        if (!conversation.isCompleted()) conversations.store(conversation)
+        val andThen = reply.andThen
+        if (andThen != null) sendReply(andThen.cb(), conversation)
+    }
+
+    private suspend fun cleanup(conversation: Conversation) {
+        if (conversation.isCompleted()) {
+            conversation.key?.also { conversations.remove(it) }
         }
     }
 
-    suspend fun sendErrors(errors: Errors, conv: Conversation) {
+    private suspend fun sendEphemeralMessage(msg: Reply.Message, user: User, conversation: Conversation) {
+        val slackMsg = conversation.mapToEphemeralMessage(msg, user)
+        val slackResp = client.chatPostEphemeral(slackMsg)
+        if (!slackResp.isOk) {
+            throw Exception(slackResp.error)
+        }
+        conversation.key = ConversationKey(conversation.channel, slackResp.messageTs)
+    }
+
+    private suspend fun sendPublicMessage(msg: Reply.Message, conversation: Conversation) {
+        val slackMsg = conversation.mapToPublicMessage(msg)
+        val slackResp = client.chatPostMessage(slackMsg)
+        if (!slackResp.isOk) {
+            throw Exception(slackResp.error)
+        }
+        conversation.updateableMessageTs = slackResp.ts
+        conversation.key = ConversationKey(conversation.channel, slackResp.message.threadTs ?: slackResp.message.ts)
+    }
+
+    private suspend fun updatePreviouslySentMessage(
+        replacementMsg: Reply.ReplacementMessage,
+        conversation: Conversation
+    ) {
+        val tsOfMessageToUpdate = conversation.updateableMessageTs ?: return
+        val slackMsg = conversation.mapToUpdateMessage(replacementMsg, tsOfMessageToUpdate)
+        val slackResp = client.chatUpdate(slackMsg)
+        if (!slackResp.isOk) {
+            throw Exception(slackResp.error)
+        }
+        conversation.updateableMessageTs = slackResp.ts
+        val key = ConversationKey(conversation.channel, slackResp.ts)
+        conversation.key = key
+        conversation.responseReplier = replacementMsg.onReply
+        if (!conversation.isCompleted()) conversations.store(conversation)
+        replacementMsg.andThen?.also { sendReply(it.cb(), conversation) }
+    }
+
+    private fun buildSlackErrorMsg(
+        errors: Errors,
+        conversation: Conversation
+    ): ChatPostMessageRequest {
         val errorTxt = errors.errs.joinToString(
             separator = "\n:warning: ",
             prefix = ":warning: "
         )
-        val slackMsg = ChatPostMessageRequest.builder()
-            .channel(conv.channel.id)
-            .threadTs(conv.thread?.id)
+        return ChatPostMessageRequest.builder()
+            .channel(conversation.channel.id)
+            .threadTs(conversation.thread?.id)
             .blocks(
                 Blocks.asBlocks(
                     SectionBlock.builder()
@@ -67,55 +127,6 @@ class MessageSender(
                         .build()
                 )
             ).build()
-        val slackResp = client.chatPostMessage(slackMsg)
-        if (!slackResp.isOk) {
-            throw Exception(slackResp.error)
-        }
-        conv.messageTsToDelete = slackResp.ts
     }
 
-    private suspend fun clearPreExistingConversations(conv: Conversation) {
-        conv.key?.also { convRepo.remove(it) }
-    }
-
-    private suspend fun sendEphemeralMessage(msg: Reply.Message, visibleTo: Visibility.Ephemeral, conv: Conversation) {
-        val slackMsg = conv.mapToEphemeralMessage(msg, visibleTo.user)
-        val slackResp = client.chatPostEphemeral(slackMsg)
-        if (!slackResp.isOk) {
-            throw Exception(slackResp.error)
-        }
-        val key = ConversationKey(conv.channel, slackResp.messageTs)
-        conv.key = key
-        convRepo.store(conv)
-    }
-
-    private suspend fun sendPublicMessage(msg: Reply.Message, conv: Conversation) {
-        val slackMsg = conv.mapToPublicMessage(msg)
-        val slackResp = client.chatPostMessage(slackMsg)
-        if (!slackResp.isOk) {
-            throw Exception(slackResp.error)
-        }
-        conv.updateableMessageTs = slackResp.ts
-        val key = ConversationKey(conv.channel, slackResp.message.ts)
-        conv.key = key
-        convRepo.store(conv)
-    }
-
-    private suspend fun updatePreviouslySentMessage(replacementMsg: Reply.ReplacementMessage, conv: Conversation) {
-        val tsOfMessageToUpdate = conv.updateableMessageTs ?: return
-        val slackMsg = conv.mapToUpdateMessage(replacementMsg, tsOfMessageToUpdate)
-        val slackResp = client.chatUpdate(slackMsg)
-        if (!slackResp.isOk) {
-            throw Exception(slackResp.error)
-        }
-        conv.updateableMessageTs = slackResp.ts
-        val key = ConversationKey(conv.channel, slackResp.ts)
-        conv.key = key
-        convRepo.store(conv)
-        sendChainedReply(replacementMsg, conv)
-    }
-
-    private suspend fun sendChainedReply(chainableReply: ChainableReply, conv: Conversation) {
-        chainableReply.andThen?.also { sendReply(it.cb(), conv) }
-    }
 }

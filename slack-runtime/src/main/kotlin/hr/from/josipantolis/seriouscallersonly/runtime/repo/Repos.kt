@@ -1,4 +1,4 @@
-package hr.from.josipantolis.seriouscallersonly.runtime.repository
+package hr.from.josipantolis.seriouscallersonly.runtime.repo
 
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -8,6 +8,8 @@ interface Repo<KeyType, ElementType> {
     suspend fun find(key: KeyType): ElementType?
     suspend fun remove(key: KeyType)
     suspend fun clear()
+    suspend fun isEmpty(): Boolean
+    suspend fun all(): Collection<Pair<KeyType, ElementType>>
 }
 
 class ConcurrentRepo<KeyType, ElementType>(
@@ -31,6 +33,14 @@ class ConcurrentRepo<KeyType, ElementType>(
         backingRepo.clear()
     }
 
+    override suspend fun isEmpty(): Boolean = mtx.withLock {
+        backingRepo.isEmpty()
+    }
+
+    override suspend fun all() = mtx.withLock {
+        backingRepo.all()
+    }
+
 }
 
 class MapRepo<KeyType, ElementType>(
@@ -51,4 +61,8 @@ class MapRepo<KeyType, ElementType>(
     override suspend fun clear() {
         store.clear()
     }
+
+    override suspend fun isEmpty() = store.isEmpty()
+
+    override suspend fun all() = store.entries.map { it.key to it.value }
 }

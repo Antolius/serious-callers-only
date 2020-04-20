@@ -1,7 +1,7 @@
 this register commandProtocol("/show-off".cmd) {
     replyPublicly {
         +section("You can send plain text...".txt)
-        +section("and markdown with **bold** and _italic_!".md)
+        +section("and markdown with *bold* and _italic_!".md)
         +divider
         +section("Plain text section with 2 column table:".txt) {
             +"Header `#1`".md
@@ -26,12 +26,12 @@ this register commandProtocol("/show-off".cmd) {
             accessory = select("Pick one!".txt) {
                 +option("Option A".txt) {
                     replyPublicly {
-                        +section("A is the **best** choice!".md)
+                        +section("A is the *best* choice!".md)
                     }
                 }
                 +option("Option B".txt) {
                     replyPublicly {
-                        +section("B is the **best** choice!".md)
+                        +section("B is the *best* choice!".md)
                     }
                 }
             }
@@ -89,15 +89,9 @@ this register commandProtocol("/show-off".cmd) {
         }
         +divider
         +image("https://bit.ly/2xu5i1H".url to "That's enough typing for now.")
+    }.andThen {
+        replyPublicly {
+            +section("Followup Message!".txt)
+        }
     }
-//    }.andThen {
-//        replyPublicly {
-//            +section("Followup Message!".txt)
-//        }
-//    }.onResponse { response ->
-//        replyPrivatelyTo(response.author) {
-//            +section("Hey ${response.author.mention}, tnx for responding!".md)
-//            +section((">${response.content.txt}\n That sure sounds interesting.").md)
-//        }
-//    }
 }

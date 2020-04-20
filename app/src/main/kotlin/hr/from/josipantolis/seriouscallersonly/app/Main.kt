@@ -6,13 +6,16 @@ import com.slack.api.bolt.App
 import com.slack.api.bolt.AppConfig
 import com.slack.api.bolt.servlet.SlackAppServlet
 import hr.from.josipantolis.seriouscallersonly.api.Bot
+import hr.from.josipantolis.seriouscallersonly.app.actuator.BotEndpoint
+import hr.from.josipantolis.seriouscallersonly.app.actuator.ConversationsEndpoint
+import hr.from.josipantolis.seriouscallersonly.runtime.repo.Repo
 import hr.from.josipantolis.seriouscallersonly.runtime.script.Loader
-import hr.from.josipantolis.seriouscallersonly.runtime.slack.Scheduler
-import hr.from.josipantolis.seriouscallersonly.runtime.slack.slackApp
+import hr.from.josipantolis.seriouscallersonly.runtime.slack.*
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.boot.web.servlet.ServletComponentScan
 import org.springframework.context.support.beans
+import org.springframework.core.env.AbstractEnvironment
 import org.springframework.core.env.get
 import org.springframework.scheduling.TaskScheduler
 import org.springframework.scheduling.annotation.EnableScheduling
@@ -35,7 +38,8 @@ fun main(args: Array<String>) {
 }
 
 fun beans() = beans {
-    bean { Loader() }
+    bean({ env: AbstractEnvironment -> ScriptProperties(env) })
+    bean({ props: ScriptProperties -> Loader(env = props) })
     bean({ loader: Loader ->
         val scriptsDir = env["sco.scripts.dir"]!!
         loader.load(File(scriptsDir))
@@ -48,8 +52,10 @@ fun beans() = beans {
             .build()
     }
     bean({ taskScheduler: TaskScheduler -> SpringScheduler(taskScheduler) })
-    bean({ bot: Bot, scheduler: Scheduler, config: AppConfig, clock: Clock ->
-        slackApp(bot = bot, scheduler = scheduler, config = config, clock = clock)
+    bean { conversationsRepo() }
+    bean({ bot: Bot, scheduler: Scheduler, config: AppConfig, clock: Clock, conversations: Repo<ConversationKey, Conversation> ->
+        slackApp(bot = bot, scheduler = scheduler, config = config, clock = clock, conversations = conversations)
     })
-    bean({ bot: Bot -> BotActuatorEndpoint(bot) })
+    bean({ bot: Bot -> BotEndpoint(bot) })
+    bean({ conversations: Repo<ConversationKey, Conversation> -> ConversationsEndpoint(conversations) })
 }

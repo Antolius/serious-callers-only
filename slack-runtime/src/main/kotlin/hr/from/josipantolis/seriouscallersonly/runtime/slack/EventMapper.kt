@@ -25,7 +25,7 @@ fun BlockActionRequest.mapToEvent(clock: Clock): Event.Interaction? {
 
 fun BlockActionRequest.mapToConversationKey() = ConversationKey(
     channel = Channel(payload.channel.id),
-    messageTs = payload.message.ts
+    messageTs = payload.message.threadTs ?: payload.message.ts
 )
 
 fun BlockActionRequest.mapToInteractionKey(): InteractionKey? {
