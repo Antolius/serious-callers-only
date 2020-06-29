@@ -3,6 +3,7 @@ package hr.from.josipantolis.seriouscallersonly.runtime.slack
 import com.slack.api.methods.request.chat.ChatPostEphemeralRequest
 import com.slack.api.methods.request.chat.ChatPostMessageRequest
 import com.slack.api.methods.request.chat.ChatUpdateRequest
+import com.slack.api.methods.request.views.ViewsOpenRequest
 import com.slack.api.model.block.*
 import com.slack.api.model.block.composition.MarkdownTextObject
 import com.slack.api.model.block.composition.OptionObject
@@ -11,6 +12,8 @@ import com.slack.api.model.block.element.ButtonElement
 import com.slack.api.model.block.element.ImageElement
 import com.slack.api.model.block.element.OverflowMenuElement
 import com.slack.api.model.block.element.StaticSelectElement
+import com.slack.api.model.view.View
+import com.slack.api.model.view.ViewTitle
 import hr.from.josipantolis.seriouscallersonly.api.*
 import java.util.*
 
@@ -51,6 +54,18 @@ suspend fun Conversation.mapToUpdateMessage(message: Reply.ReplacementMessage, t
         .blocks(message.blocks.mapNotNull { it.toSlackBlock(this) })
         .build()
 }
+
+suspend fun Conversation.mapToModal(modal: Reply.Modal, triggerId: String): ViewsOpenRequest =
+    ViewsOpenRequest.builder()
+        .triggerId(triggerId)
+        .view(
+            View.builder()
+                .type("modal")
+                .title(modal.title.toSlackViewElement(this))
+                .blocks()
+                .build()
+        )
+        .build()
 
 private suspend fun MessageBlock.toSlackBlock(ctx: Conversation) =
     when (this) {
@@ -120,6 +135,12 @@ private suspend fun Element.Text.toSlackElement(ctx: Conversation) =
 
 private suspend fun Element.Text.Plain.toSlackElement(@Suppress("UNUSED_PARAMETER") ctx: Conversation) =
     PlainTextObject.builder()
+        .text(text)
+        .emoji(emoji)
+        .build()
+
+private suspend fun Element.Text.Plain.toSlackViewElement(@Suppress("UNUSED_PARAMETER") ctx: Conversation) =
+    ViewTitle.builder()
         .text(text)
         .emoji(emoji)
         .build()

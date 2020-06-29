@@ -4,9 +4,11 @@ import com.slack.api.methods.AsyncMethodsClient
 import com.slack.api.methods.request.chat.ChatPostEphemeralRequest
 import com.slack.api.methods.request.chat.ChatPostMessageRequest
 import com.slack.api.methods.request.chat.ChatUpdateRequest
+import com.slack.api.methods.request.views.ViewsOpenRequest
 import com.slack.api.methods.response.chat.ChatPostEphemeralResponse
 import com.slack.api.methods.response.chat.ChatPostMessageResponse
 import com.slack.api.methods.response.chat.ChatUpdateResponse
+import com.slack.api.methods.response.views.ViewsOpenResponse
 import com.slack.api.model.block.Blocks
 import com.slack.api.model.block.SectionBlock
 import com.slack.api.model.block.composition.PlainTextObject
@@ -26,12 +28,16 @@ class AsyncSlackClient(private val delegate: AsyncMethodsClient) : SlackClient {
 
     override suspend fun chatUpdate(req: ChatUpdateRequest): ChatUpdateResponse =
         delegate.chatUpdate(req).await()
+
+    override suspend fun viewOpen(req: ViewsOpenRequest): ViewsOpenResponse =
+        delegate.viewsOpen(req).await()
 }
 
 interface SlackClient {
     suspend fun chatPostEphemeral(req: ChatPostEphemeralRequest): ChatPostEphemeralResponse
     suspend fun chatPostMessage(req: ChatPostMessageRequest): ChatPostMessageResponse
     suspend fun chatUpdate(req: ChatUpdateRequest): ChatUpdateResponse
+    suspend fun viewOpen(req: ViewsOpenRequest): ViewsOpenResponse
 }
 
 class MessageSender(
@@ -42,6 +48,8 @@ class MessageSender(
         when (reply) {
             is Reply.Message -> sendNewMessage(reply, conversation)
             is Reply.ReplacementMessage -> updatePreviouslySentMessage(reply, conversation)
+            is Reply.Modal -> showModal(reply, conversation)
+            is Reply.NoOp -> {}
         }
         cleanup(conversation)
     }
@@ -127,6 +135,17 @@ class MessageSender(
                         .build()
                 )
             ).build()
+    }
+
+    private suspend fun showModal(modal: Reply.Modal, conversation: Conversation) {
+        val triggerId = conversation.triggerId
+            ?: throw Exception("Can't open modal without triggerId, modal: $modal, conv: $conversation")
+        val slackModal = conversation.mapToModal(modal, triggerId)
+        val slackResp = client.viewOpen(slackModal)
+        if (!slackResp.isOk) {
+            throw Exception(slackResp.error)
+        }
+        conversation.updateableModalId = slackResp.view.id
     }
 
 }

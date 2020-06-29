@@ -29,6 +29,7 @@ class Conversation(
     val thread: Thread? = null,
     var triggerId: String? = null,
     var updateableMessageTs: String? = null,
+    var updateableModalId: String? = null,
     var messageTsToDelete: String? = null,
     var responseReplier: EventReplier.InteractionReplier.UserRespondedReplier? = null
 ) {

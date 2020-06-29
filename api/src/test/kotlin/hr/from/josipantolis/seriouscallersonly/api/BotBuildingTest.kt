@@ -45,6 +45,24 @@ class BotBuildingTest {
                     +section("${join.channel.mention} is the best channel ever!".md)
                 }
             }
+            this register privateMessageReplier { message ->
+                openModal("Title".txt) {
+                    +"Single line input" to textInput {
+                        placeholder = "Blah blah blah".txt
+                        initialValue = "Aha!"
+                        validate = { value: String -> value.isNotBlank() }
+                    }
+                    +"Multi line input" to multiLineTextInput {
+                        placeholder = "Blah blah blah".txt
+                        initialValue = "A\nh\na\n!"
+                        validate = { value: String -> value.isNotBlank() }
+                    }
+                }.onSubmit { payload: Map<String, String> ->
+                    payload["Single line input"]
+                    payload["Multi line input"]
+                    
+                }
+            }
         }
     }
 }

@@ -27,8 +27,15 @@ sealed class Reply {
         fun asNewMessage() = Message(blocks, andThen = andThen, onReply = onReply)
     }
 
-    //    class Modal() : Reply()
+    class Modal(
+        val title: Element.Text.Plain
+    ) : Reply()
+
+    class ModalUpdate(
+        val title: Element.Text.Plain
+    ) : Reply()
 //    class HomeTabs() : Reply()
+    object NoOp: Reply()
 }
 
 sealed class Visibility {
